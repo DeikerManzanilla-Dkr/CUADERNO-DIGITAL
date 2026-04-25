@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Search, Trash2, Plus, Minus, ShoppingCart, RefreshCw, CreditCard, Banknote } from "lucide-react";
 import { useExchangeRate, formatBs } from "@/services/bcvService";
+import SaleSuccessOverlay from "@/components/SaleSuccessOverlay";
 
 interface CartItem {
   product_id: string;
@@ -31,6 +32,8 @@ const POS = () => {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
+  const [overlayMessage, setOverlayMessage] = useState("Venta Aprobada");
   const inputRef = useRef<HTMLInputElement>(null);
   const rateInputRef = useRef<HTMLInputElement>(null);
 
@@ -199,6 +202,7 @@ const POS = () => {
         product_name: i.name,
         quantity: i.quantity,
         unit_price: i.unit_price,
+        cost_price_at_sale: i.cost_price,
         subtotal: i.unit_price * i.quantity,
         user_id: user.id,
       }));
@@ -227,16 +231,22 @@ const POS = () => {
         });
         
         if (debtError) throw debtError;
-        toast.success(`Fiado registrado: $${total.toFixed(2)} - ${customerName.trim()}`);
+        setOverlayMessage("Crédito Registrado");
       } else {
-        toast.success(`Venta procesada: $${total.toFixed(2)}`);
+        setOverlayMessage("Venta Aprobada");
       }
       
-      // Limpiar formulario
-      setCart([]);
-      setCustomerName("");
-      setCustomerPhone("");
-      setPaymentMethod("cash");
+      // Mostrar overlay de éxito y limpiar formulario
+      setShowSuccessOverlay(true);
+      
+      // Limpiar formulario después de 1.5 segundos
+      setTimeout(() => {
+        setCart([]);
+        setCustomerName("");
+        setCustomerPhone("");
+        setPaymentMethod("cash");
+        setShowSuccessOverlay(false);
+      }, 1500);
     } catch (err) {
       toast.error("Error al procesar la venta");
       console.error(err);
@@ -474,6 +484,12 @@ const POS = () => {
           </p>
         </div>
       </div>
+    
+      {/* Overlay de Venta Exitosa */}
+      <SaleSuccessOverlay 
+        isOpen={showSuccessOverlay} 
+        message={overlayMessage}
+      />
     </div>
   );
 };
