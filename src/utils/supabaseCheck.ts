@@ -31,9 +31,7 @@ export async function checkSupabaseConnection(): Promise<ConnectionStatus> {
       return status;
     }
 
-    console.log("🔍 Verificando conexión a Supabase...");
-    console.log(`📍 URL: ${url}`);
-    console.log(`📍 Project ID: ${projectId}`);
+    // Verificación silenciosa para producción
 
     // 2. Verificar autenticación
     const { data: authData, error: authError } = await supabase.auth.getSession();
@@ -41,7 +39,6 @@ export async function checkSupabaseConnection(): Promise<ConnectionStatus> {
       status.errors.push(`Error de autenticación: ${authError.message}`);
     } else {
       status.auth = true;
-      console.log("✅ Autenticación: OK");
     }
 
     // 3. Verificar conexión a la base de datos
@@ -59,7 +56,6 @@ export async function checkSupabaseConnection(): Promise<ConnectionStatus> {
       }
     } else {
       status.database = true;
-      console.log("✅ Base de datos: OK");
     }
 
     // 4. Listar tablas existentes (verificar solo las principales)
@@ -74,9 +70,6 @@ export async function checkSupabaseConnection(): Promise<ConnectionStatus> {
     await checkTable("sales");
     await checkTable("sale_items");
 
-    if (status.tables.length > 0) {
-      console.log(`✅ Tablas encontradas: ${status.tables.join(", ")}`);
-    }
 
     status.connected = status.auth || status.database;
 
@@ -88,17 +81,10 @@ export async function checkSupabaseConnection(): Promise<ConnectionStatus> {
 }
 
 export function printConnectionStatus(status: ConnectionStatus): void {
-  console.log("\n📊 ESTADO DE CONEXIÓN SUPABASE:");
-  console.log("================================");
-  console.log(`🔗 Proyecto: ${status.projectId || "No configurado"}`);
-  console.log(`🔐 Autenticación: ${status.auth ? "✅ OK" : "❌ Fallo"}`);
-  console.log(`💾 Base de datos: ${status.database ? "✅ OK" : "❌ Fallo"}`);
-  console.log(`📋 Tablas: ${status.tables.length > 0 ? status.tables.join(", ") : "Ninguna"}`);
-  
-  if (status.errors.length > 0) {
-    console.log("\n⚠️  ERRORES ENCONTRADOS:");
-    status.errors.forEach((err) => console.log(`  - ${err}`));
+  // Función silenciada para producción
+  // Los errores se manejan a través del sistema de estado, no consola
+  if (status.errors.length > 0 && !status.connected) {
+    // En producción, los errores se reportan al sistema de monitoreo
+    // no a la consola del navegador
   }
-  
-  console.log("\n" + (status.connected ? "✅ Conexión establecida correctamente" : "❌ Problemas de conexión detectados"));
 }

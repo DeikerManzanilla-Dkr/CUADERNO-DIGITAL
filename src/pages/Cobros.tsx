@@ -14,10 +14,17 @@ import {
   CreditCard,
   Search,
   ArrowRight,
-  Wallet
+  Wallet,
+  Sparkles,
+  BookOpen,
+  Clock,
+  AlertCircle,
+  TrendingDown,
+  X,
+  Receipt
 } from "lucide-react";
 import { useExchangeRate, formatBs, formatUsd } from "@/services/bcvService";
-import { format } from "date-fns";
+import { format, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
 
 interface Debt {
@@ -113,7 +120,7 @@ const Cobros = () => {
     }
 
     const newRemaining = paymentModal.debt.remaining_amount - amount;
-    const isPaid = newRemaining <= 0.01; // Margen para errores de punto flotante
+    const isPaid = newRemaining <= 0.01;
 
     const { error } = await supabase
       .from("debts")
@@ -139,6 +146,21 @@ const Cobros = () => {
     fetchDebts();
   };
 
+  // Determinar si la deuda está atrasada (más de 7 días)
+  const isOverdue = (createdAt: string) => {
+    const days = differenceInDays(new Date(), new Date(createdAt));
+    return days > 7;
+  };
+
+  // Obtener color según antigüedad
+  const getDebtAgeColor = (createdAt: string) => {
+    const days = differenceInDays(new Date(), new Date(createdAt));
+    if (days > 14) return { color: "red", label: `${days} días` };
+    if (days > 7) return { color: "orange", label: `${days} días` };
+    if (days > 3) return { color: "yellow", label: `${days} días` };
+    return { color: "cyan", label: `${days} días` };
+  };
+
   const openPaymentModal = (debt: Debt) => {
     setPaymentModal({
       isOpen: true,
@@ -148,182 +170,271 @@ const Cobros = () => {
   };
 
   return (
-    <div className="space-y-6 animate-slide-in">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Cuentas por Cobrar</h1>
-          <p className="text-muted-foreground">Gestión de fiados y pagos</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={fetchRate} disabled={loadingRate}>
-            <RefreshCw className={`w-4 h-4 mr-2 ${loadingRate ? "animate-spin" : ""}`} />
-            {rate ? `${rate.usdToBs.toFixed(2)} Bs/USD` : "Actualizar tasa"}
-          </Button>
-        </div>
-      </div>
-
-      {/* Resumen */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="rounded-lg border border-border bg-card p-5 pos-glow">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <DollarSign className="w-5 h-5 text-primary" />
+    <div className="min-h-screen bg-[#0f172a] p-4 lg:p-6">
+      <div className="space-y-6 max-w-[1400px] mx-auto">
+        
+        {/* Header */}
+        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center shadow-lg">
+              <BookOpen className="w-6 h-6 text-slate-400" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Total por Cobrar (USD)</p>
-              <p className="text-2xl font-mono font-bold text-primary">{formatUsd(totalOwed)}</p>
+              <h1 className="text-2xl font-bold text-slate-100">
+                Cuentas por Cobrar
+              </h1>
+              <p className="text-xs text-slate-500 font-medium">
+                Gestión de fiados y pagos
+              </p>
             </div>
           </div>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-5 pos-glow">
+          
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-secondary/50 flex items-center justify-center">
-              <Wallet className="w-5 h-5 text-muted-foreground" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Equivalente en Bs</p>
-              <p className="text-2xl font-mono font-bold">{rate ? formatBs(totalOwedBs) : "---"}</p>
-            </div>
+            <button 
+              onClick={fetchRate} 
+              disabled={loadingRate}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 hover:bg-slate-700 transition-all"
+            >
+              <RefreshCw className={`w-4 h-4 ${loadingRate ? "animate-spin" : ""}`} />
+              <span className="font-mono text-sm">{rate ? `${rate.usdToBs.toFixed(2)} Bs` : "Tasa"}</span>
+            </button>
           </div>
         </div>
-      </div>
 
-      {/* Búsqueda */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        {/* KPIs */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Total por Cobrar */}
+          <div className="sm:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center">
+                <DollarSign className="w-5 h-5 text-slate-400" />
+              </div>
+              <span className="text-xs text-slate-500 font-medium">{filteredCustomers.length} clientes</span>
+            </div>
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Total por Cobrar</p>
+            <p className="text-3xl font-mono font-bold text-slate-200">{formatUsd(totalOwed)}</p>
+            {rate && <p className="mt-1 text-sm font-mono text-slate-500">{formatBs(totalOwedBs)}</p>}
+          </div>
+
+          {/* Deudas Atrasadas */}
+          <div className={`rounded-xl p-5 border ${debts.filter(d => isOverdue(d.created_at)).length > 0 ? 'bg-amber-950/30 border-amber-500/30' : 'bg-slate-900 border-slate-800'}`}>
+            <div className="flex items-center gap-3 mb-3">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center border ${debts.filter(d => isOverdue(d.created_at)).length > 0 ? 'bg-amber-500/10 border-amber-500/20' : 'bg-slate-800 border-slate-700'}`}>
+                <Clock className={`w-5 h-5 ${debts.filter(d => isOverdue(d.created_at)).length > 0 ? 'text-amber-500' : 'text-slate-400'}`} />
+              </div>
+            </div>
+            <p className={`text-xs uppercase tracking-wider mb-1 ${debts.filter(d => isOverdue(d.created_at)).length > 0 ? 'text-amber-400' : 'text-slate-500'}`}>Deudas Atrasadas</p>
+            <p className={`text-2xl font-mono font-bold ${debts.filter(d => isOverdue(d.created_at)).length > 0 ? 'text-amber-400' : 'text-slate-200'}`}>
+              {debts.filter(d => isOverdue(d.created_at)).length}
+            </p>
+            <p className="text-xs text-slate-500 mt-1">+7 días sin abono</p>
+          </div>
+
+          {/* Promedio */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center">
+                <TrendingDown className="w-5 h-5 text-slate-400" />
+              </div>
+            </div>
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Promedio/Cliente</p>
+            <p className="text-2xl font-mono font-bold text-slate-200">
+              {filteredCustomers.length > 0 ? formatUsd(totalOwed / filteredCustomers.length) : "$0.00"}
+            </p>
+            <p className="text-xs text-slate-500 mt-1">deuda promedio</p>
+          </div>
+        </div>
+
+        {/* Búsqueda */}
+        <div className="relative max-w-xl">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar cliente por nombre o teléfono..."
-            className="pl-10 bg-card"
+            className="w-full pl-12 pr-4 h-12 bg-slate-900 border-slate-800 rounded-lg text-slate-200 placeholder:text-slate-600 focus:border-slate-700 focus:ring-1 focus:ring-slate-600"
           />
         </div>
-        <span className="text-sm text-muted-foreground font-mono">{filteredCustomers.length} clientes</span>
-      </div>
 
-      {/* Lista de Clientes con Deudas */}
-      <div className="space-y-4">
+        {/* Grid de Tarjetas de Deudores */}
         {loading ? (
-          <div className="text-center py-12 text-muted-foreground">Cargando deudas...</div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-56 rounded-xl bg-slate-800/50 animate-pulse border border-slate-700/50" />
+            ))}
+          </div>
         ) : filteredCustomers.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            <CheckCircle2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p>{search ? "No se encontraron clientes" : "No hay deudas pendientes"}</p>
+          <div className="text-center py-16">
+            <div className="w-20 h-20 mx-auto mb-6 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center">
+              <CheckCircle2 className="w-10 h-10 text-slate-600" />
+            </div>
+            <p className="text-slate-400 font-medium text-lg">
+              {search ? "No se encontraron clientes" : "¡Todas las cuentas están al día!"}
+            </p>
+            <p className="text-slate-500 text-sm mt-2">
+              {search ? "Intenta con otro término de búsqueda" : "No hay deudas pendientes"}
+            </p>
           </div>
         ) : (
-          filteredCustomers.map((customer) => (
-            <div key={`${customer.customer_name}-${customer.customer_phone}`} className="rounded-lg border border-border bg-card overflow-hidden">
-              {/* Header del Cliente */}
-              <div className="p-4 border-b border-border bg-secondary/20">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <User className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold">{customer.customer_name}</h3>
-                      {customer.customer_phone && (
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <Phone className="w-3 h-3" />
-                          <span className="font-mono">{customer.customer_phone}</span>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {filteredCustomers.map((customer) => {
+              const ageInfo = customer.debts[customer.debts.length - 1] 
+                ? getDebtAgeColor(customer.debts[customer.debts.length - 1].created_at) 
+                : { color: "slate", label: "Nuevo" };
+              const hasOverdue = customer.debts.some(d => isOverdue(d.created_at));
+              
+              return (
+                <div 
+                  key={`${customer.customer_name}-${customer.customer_phone}`}
+                  className={`rounded-xl border overflow-hidden ${
+                    hasOverdue ? "bg-amber-950/20 border-amber-500/20" : "bg-slate-900 border-slate-800"
+                  }`}
+                >
+                  {/* Header */}
+                  <div className={`p-4 border-b ${hasOverdue ? "border-amber-500/20 bg-amber-500/5" : "border-slate-800"}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center border ${
+                          hasOverdue ? "bg-amber-500/10 border-amber-500/20" : "bg-slate-800 border-slate-700"
+                        }`}>
+                          {hasOverdue ? (
+                            <AlertCircle className="w-5 h-5 text-amber-500" />
+                          ) : (
+                            <User className="w-5 h-5 text-slate-400" />
+                          )}
                         </div>
-                      )}
+                        <div>
+                          <h3 className={`font-semibold ${hasOverdue ? "text-amber-100" : "text-slate-200"}`}>
+                            {customer.customer_name}
+                          </h3>
+                          {customer.customer_phone && (
+                            <div className="flex items-center gap-1 text-xs text-slate-500">
+                              <Phone className="w-3 h-3" />
+                              <span className="font-mono">{customer.customer_phone}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <span className={`px-2 py-1 rounded-md text-xs font-medium ${
+                        ageInfo.color === "red" ? "bg-red-500/10 text-red-400 border border-red-500/20" :
+                        ageInfo.color === "orange" ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
+                        ageInfo.color === "yellow" ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20" :
+                        "bg-slate-700 text-slate-300"
+                      }`}>
+                        {ageInfo.label}
+                      </span>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs text-muted-foreground">Deuda Total</p>
-                    <p className="text-xl font-mono font-bold text-primary">{formatUsd(customer.total_owed)}</p>
-                    {rate && (
-                      <p className="text-sm font-mono text-muted-foreground">
-                        {formatBs(customer.total_owed * rate.usdToBs)}
-                      </p>
+
+                  {/* Deudas */}
+                  <div className="divide-y divide-slate-800">
+                    {customer.debts.slice(0, 2).map((debt) => {
+                      const paidPercent = ((debt.total_amount - debt.remaining_amount) / debt.total_amount) * 100;
+                      
+                      return (
+                        <div key={debt.id} className="p-3 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center">
+                              <Receipt className="w-4 h-4 text-slate-500" />
+                            </div>
+                            <div>
+                              <p className="text-sm text-slate-300">
+                                {format(new Date(debt.created_at), "dd MMM yyyy", { locale: es })}
+                              </p>
+                              {paidPercent > 0 && (
+                                <div className="flex items-center gap-1.5 mt-1">
+                                  <div className="w-16 h-1 bg-slate-800 rounded-full overflow-hidden">
+                                    <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${paidPercent}%` }} />
+                                  </div>
+                                  <span className="text-xs text-emerald-400">{paidPercent.toFixed(0)}%</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-mono font-medium text-slate-200">{formatUsd(debt.remaining_amount)}</p>
+                            {debt.remaining_amount < debt.total_amount && (
+                              <p className="text-xs text-slate-600 line-through">{formatUsd(debt.total_amount)}</p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {customer.debts.length > 2 && (
+                      <div className="px-3 py-2 text-center text-xs text-slate-500">
+                        +{customer.debts.length - 2} deudas más
+                      </div>
                     )}
                   </div>
-                </div>
-              </div>
 
-              {/* Lista de Deudas Individuales */}
-              <div className="divide-y divide-border/50">
-                {customer.debts.map((debt) => (
-                  <div key={debt.id} className="p-3 flex items-center justify-between hover:bg-secondary/10 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded bg-secondary/50 flex items-center justify-center">
-                        <CreditCard className="w-4 h-4 text-muted-foreground" />
-                      </div>
+                  {/* Footer */}
+                  <div className={`p-4 border-t ${hasOverdue ? "border-amber-500/20 bg-amber-500/5" : "border-slate-800"}`}>
+                    <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-sm font-medium">
-                          Fiado del {format(new Date(debt.created_at), "dd MMM yyyy", { locale: es })}
+                        <p className="text-xs text-slate-500 mb-1">Total adeudado</p>
+                        <p className={`text-xl font-mono font-bold ${hasOverdue ? "text-amber-400" : "text-slate-200"}`}>
+                          {formatUsd(customer.total_owed)}
                         </p>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Calendar className="w-3 h-3" />
-                          <span>{format(new Date(debt.created_at), "HH:mm")}</span>
-                          {debt.notes && <span>- {debt.notes}</span>}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="text-right">
-                        <p className="font-mono font-semibold">{formatUsd(debt.remaining_amount)}</p>
-                        {rate && (
-                          <p className="text-xs font-mono text-muted-foreground">
-                            {formatBs(debt.remaining_amount * rate.usdToBs)}
-                          </p>
-                        )}
                       </div>
                       <Button 
-                        size="sm" 
-                        onClick={() => openPaymentModal(debt)}
-                        className="gap-1"
+                        onClick={() => openPaymentModal(customer.debts[0])}
+                        className="h-10 px-5 rounded-lg bg-slate-200 hover:bg-white text-slate-900 font-semibold shadow-md transition-all hover:scale-[1.02] active:scale-[0.98] border-0"
                       >
-                        Cobrar
-                        <ArrowRight className="w-3 h-3" />
+                        <DollarSign className="w-4 h-4 mr-2" />
+                        Abonar
                       </Button>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          ))
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
 
       {/* Modal de Pago */}
       {paymentModal.isOpen && paymentModal.debt && rate && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-card rounded-lg border border-border p-6 w-full max-w-md space-y-4 shadow-xl">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold">Registrar Pago</h3>
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 w-full max-w-md space-y-4 shadow-2xl">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center">
+                  <DollarSign className="w-5 h-5 text-slate-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-100">Registrar Abono</h3>
+                  <p className="text-xs text-slate-500">{paymentModal.debt.customer_name}</p>
+                </div>
+              </div>
               <button
                 onClick={() => setPaymentModal({ isOpen: false, debt: null, amountUsd: "" })}
-                className="text-muted-foreground hover:text-foreground"
+                className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-400 hover:text-slate-200 transition-colors"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-3">
-              <div className="p-3 bg-secondary/30 rounded-md">
-                <p className="text-sm text-muted-foreground">Cliente</p>
-                <p className="font-semibold">{paymentModal.debt.customer_name}</p>
+            {/* Info de deuda */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 rounded-lg bg-slate-950 border border-slate-800">
+                <p className="text-xs text-slate-500 mb-1">Deuda Original</p>
+                <p className="font-mono text-slate-400">{formatUsd(paymentModal.debt.total_amount)}</p>
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 bg-secondary/30 rounded-md">
-                  <p className="text-sm text-muted-foreground">Deuda Original</p>
-                  <p className="font-mono font-semibold">{formatUsd(paymentModal.debt.total_amount)}</p>
-                </div>
-                <div className="p-3 bg-primary/10 rounded-md border border-primary/20">
-                  <p className="text-sm text-muted-foreground">Saldo Pendiente</p>
-                  <p className="font-mono font-bold text-primary">{formatUsd(paymentModal.debt.remaining_amount)}</p>
-                </div>
+              <div className="p-3 rounded-lg bg-slate-800 border border-slate-700">
+                <p className="text-xs text-slate-500 mb-1">Saldo Pendiente</p>
+                <p className="font-mono font-semibold text-slate-200">{formatUsd(paymentModal.debt.remaining_amount)}</p>
               </div>
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="paymentAmount" className="text-xs uppercase tracking-wider">
-                  Monto a Pagar (USD)
-                </Label>
+            {/* Input de monto */}
+            <div className="space-y-2">
+              <Label htmlFor="paymentAmount" className="text-xs text-slate-500 uppercase tracking-wider">
+                Monto a Pagar (USD)
+              </Label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-mono text-lg">$</span>
                 <Input
                   id="paymentAmount"
                   type="number"
@@ -332,47 +443,52 @@ const Cobros = () => {
                   max={paymentModal.debt.remaining_amount}
                   value={paymentModal.amountUsd}
                   onChange={(e) => setPaymentModal(prev => ({ ...prev, amountUsd: e.target.value }))}
-                  className="font-mono text-lg"
+                  className="pl-8 pr-4 py-3 bg-slate-950 border-slate-700 text-slate-200 font-mono text-lg rounded-lg focus:border-slate-500"
                   autoFocus
                 />
-                {parseFloat(paymentModal.amountUsd || "0") > paymentModal.debt.remaining_amount && (
-                  <p className="text-xs text-destructive">El monto no puede exceder el saldo pendiente</p>
-                )}
               </div>
+              {parseFloat(paymentModal.amountUsd || "0") > paymentModal.debt.remaining_amount && (
+                <p className="text-xs text-red-400 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  El monto no puede exceder el saldo pendiente
+                </p>
+              )}
+            </div>
 
-              {/* Conversión a Bolívares usando tasa ACTUAL */}
-              <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-800">
-                <p className="text-sm text-green-700 dark:text-green-400 font-medium mb-1">
-                  Equivalente a cobrar en Bs (tasa actual)
-                </p>
-                <p className="text-2xl font-mono font-bold text-green-700 dark:text-green-400">
-                  {formatBs(parseFloat(paymentModal.amountUsd || "0") * rate.usdToBs)}
-                </p>
-                <p className="text-xs text-green-600 dark:text-green-500 mt-1">
-                  Tasa: {rate.usdToBs.toFixed(2)} Bs/USD ({rate.source === "api" ? "BCV" : "Manual"})
-                </p>
-              </div>
+            {/* Conversión a Bolívares */}
+            <div className="p-4 rounded-lg bg-emerald-950/20 border border-emerald-500/20">
+              <p className="text-xs text-emerald-500/70 uppercase tracking-wider mb-2">
+                Equivalente en Bolívares
+              </p>
+              <p className="text-2xl font-mono font-bold text-emerald-400">
+                {formatBs(parseFloat(paymentModal.amountUsd || "0") * rate.usdToBs)}
+              </p>
+              <p className="text-xs text-emerald-500/50 mt-1">
+                Tasa: {rate.usdToBs.toFixed(2)} Bs/USD
+              </p>
+            </div>
 
-              <div className="pt-2 flex gap-2">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setPaymentModal({ isOpen: false, debt: null, amountUsd: "" })}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  className="flex-1"
-                  onClick={handlePayment}
-                  disabled={
-                    !paymentModal.amountUsd ||
-                    parseFloat(paymentModal.amountUsd) <= 0 ||
-                    parseFloat(paymentModal.amountUsd) > paymentModal.debt.remaining_amount
-                  }
-                >
-                  Confirmar Pago
-                </Button>
-              </div>
+            {/* Botones */}
+            <div className="flex gap-3 pt-2">
+              <Button
+                variant="outline"
+                className="flex-1 h-11 rounded-lg border-slate-700 text-slate-300 hover:bg-slate-800"
+                onClick={() => setPaymentModal({ isOpen: false, debt: null, amountUsd: "" })}
+              >
+                Cancelar
+              </Button>
+              <Button
+                className="flex-1 h-11 rounded-lg bg-slate-200 hover:bg-white text-slate-900 font-semibold shadow-md transition-all hover:scale-[1.02] active:scale-[0.98] border-0"
+                onClick={handlePayment}
+                disabled={
+                  !paymentModal.amountUsd ||
+                  parseFloat(paymentModal.amountUsd) <= 0 ||
+                  parseFloat(paymentModal.amountUsd) > paymentModal.debt.remaining_amount
+                }
+              >
+                <DollarSign className="w-4 h-4 mr-2" />
+                Confirmar Pago
+              </Button>
             </div>
           </div>
         </div>

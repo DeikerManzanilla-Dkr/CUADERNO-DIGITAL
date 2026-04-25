@@ -62,10 +62,7 @@ const AppLayout = () => {
               <span className="font-bold text-sm tracking-tight">
                 {loading ? "Cargando..." : businessName}
               </span>
-              <span className="text-[10px] text-muted-foreground font-medium tracking-wide">
-                Cuaderno Digital
-              </span>
-            </div>
+                          </div>
             <span className="sm:hidden font-bold text-sm tracking-tight">
               {businessName.slice(0, 15)}
             </span>
