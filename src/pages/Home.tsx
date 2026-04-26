@@ -237,7 +237,7 @@ export default function Home() {
       {/* Footer simple */}
       <footer className="border-t border-slate-800/50 py-8 text-center">
         <p className="text-slate-500 text-sm">
-          © 2025 Cuaderno Digital. Todos los derechos reservados.
+          © 2026 Cuaderno Digital. Todos los derechos reservados.
         </p>
       </footer>
 
