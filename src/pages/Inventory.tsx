@@ -396,11 +396,11 @@ const Inventory = () => {
             ))}
           </div>
 
-          {/* Grid de Tarjetas */}
+          {/* Lista de Productos - Estilo Cuaderno en Móvil, Tarjetas en Desktop */}
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="flex flex-col md:grid md:grid-cols-2 xl:grid-cols-3 gap-1 md:gap-4">
               {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="h-48 rounded-xl bg-slate-800/50 animate-pulse border border-slate-700/50" />
+                <div key={i} className="h-16 md:h-48 rounded-lg md:rounded-xl bg-slate-800/50 animate-pulse border-b md:border border-slate-700/50" />
               ))}
             </div>
           ) : filtered.length === 0 ? (
@@ -412,12 +412,11 @@ const Inventory = () => {
               <p className="text-slate-500 text-sm mt-2">Agrega tu primer producto usando el formulario</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="flex flex-col md:grid md:grid-cols-2 xl:grid-cols-3 gap-0 md:gap-4">
               {filtered.map((p, index) => {
                 const isLowStock = p.stock <= 5;
                 const isHovered = hoveredProduct === p.id;
                 const CategoryIcon = getCategoryIcon(p.category);
-                const catColor = getCategoryColor(p.category);
                 
                 return (
                   <div
@@ -425,9 +424,44 @@ const Inventory = () => {
                     onMouseEnter={() => setHoveredProduct(p.id)}
                     onMouseLeave={() => setHoveredProduct(null)}
                     className="animate-in fade-in duration-300"
-                    style={{ animationDelay: `${index * 50}ms` }}
+                    style={{ animationDelay: `${index * 30}ms` }}
                   >
-                    <div className={`h-full rounded-xl border transition-all duration-200 overflow-hidden ${
+                    {/* Vista Móvil: Fila compacta tipo lista */}
+                    <div className={`md:hidden flex items-center justify-between py-3 px-3 border-b border-slate-800 ${
+                      isLowStock ? "bg-amber-500/5" : ""
+                    }`}>
+                      {/* Izquierda: Nombre y SKU */}
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <div className={`w-8 h-8 rounded flex items-center justify-center flex-shrink-0 ${
+                          isLowStock ? "bg-amber-500/10" : "bg-slate-800"
+                        }`}>
+                          {isLowStock ? (
+                            <AlertTriangle className="w-4 h-4 text-amber-500" />
+                          ) : (
+                            <CategoryIcon className="w-4 h-4 text-slate-500" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="text-sm font-medium text-slate-200 truncate">{p.name}</h3>
+                          <p className="text-[10px] text-slate-500 font-mono">{p.sku}</p>
+                        </div>
+                      </div>
+                      
+                      {/* Derecha: Stock y Precio */}
+                      <div className="flex items-center gap-3 flex-shrink-0 ml-2">
+                        <div className={`text-xs font-mono font-medium ${
+                          isLowStock ? "text-amber-400" : p.stock <= 20 ? "text-yellow-400" : "text-emerald-400"
+                        }`}>
+                          {p.stock}u
+                        </div>
+                        <div className="text-sm font-mono font-semibold text-slate-200">
+                          ${Number(p.final_price).toFixed(0)}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Vista Desktop: Tarjeta completa */}
+                    <div className={`hidden md:block h-full rounded-xl border transition-all duration-200 overflow-hidden ${
                       isLowStock
                         ? "bg-slate-900 border-amber-500/30 shadow-lg"
                         : isHovered
@@ -494,7 +528,7 @@ const Inventory = () => {
                         </div>
 
                         {/* Acciones rápidas */}
-                        <div className={`flex gap-2 transition-all duration-200 ${isHovered ? "opacity-100" : "opacity-0 sm:opacity-0"}`}>
+                        <div className={`flex gap-2 transition-all duration-200 ${isHovered ? "opacity-100" : "opacity-0"}`}>
                           <button className="flex-1 flex items-center justify-center gap-2 p-2.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 hover:text-slate-200 hover:bg-slate-700 transition-colors text-sm">
                             <Edit3 className="w-4 h-4" />
                             Editar

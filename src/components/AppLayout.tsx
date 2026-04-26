@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate, Link } from "react-router-dom";
 import { Package, ShoppingCart, BarChart3, LogOut, DollarSign, Clock, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,6 @@ import { useState, useEffect } from "react";
 import { differenceInDays, parseISO, isAfter } from "date-fns";
 
 const navItems = [
-  { to: "/pos", label: "Punto de Venta", icon: ShoppingCart },
   { to: "/inventario", label: "Inventario", icon: Package },
   { to: "/cobros", label: "Cobros", icon: DollarSign },
   { to: "/reportes", label: "Reportes", icon: BarChart3 },
@@ -76,19 +75,19 @@ const AppLayout = () => {
     <div className="min-h-screen bg-background flex flex-col">
       <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container flex items-center justify-between h-14 px-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center">
+          <Link to="/pos" className="flex items-center gap-2 group hover:opacity-80 transition-opacity cursor-pointer">
+            <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center group-hover:scale-105 transition-transform">
               <ShoppingCart className="w-4 h-4 text-primary-foreground" />
             </div>
             <div className="hidden sm:flex flex-col leading-tight">
               <span className="font-bold text-sm tracking-tight">
                 {loading ? "Cargando..." : businessName}
               </span>
-                          </div>
+            </div>
             <span className="sm:hidden font-bold text-sm tracking-tight">
               {businessName.slice(0, 15)}
             </span>
-          </div>
+          </Link>
           {/* Indicador de días de licencia - Desktop */}
           {daysRemaining !== null && (
             <div className="hidden md:flex items-center">

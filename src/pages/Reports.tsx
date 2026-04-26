@@ -231,7 +231,7 @@ const Reports = () => {
               className="data-[state=active]:bg-slate-700 data-[state=active]:text-slate-100 rounded-md px-5 py-2 text-slate-400 transition-all"
             >
               <Lock className="w-4 h-4 mr-2" />
-              Cierre Diario
+              Cierre
             </TabsTrigger>
             <TabsTrigger 
               value="sales"
