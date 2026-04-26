@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { ShoppingCart, LogIn, Shield, Lock, Mail } from "lucide-react";
+import { ShoppingCart, LogIn, Shield, Lock, Mail, MessageCircle, Sparkles, CheckCircle } from "lucide-react";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -160,16 +160,72 @@ const Auth = () => {
 
                 {/* Footer con indicadores de seguridad */}
                 <div className="flex items-center justify-center gap-4 pt-4">
-                  <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                    <Shield className="w-3.5 h-3.5 text-green-400" />
-                    <span>Conexión segura</span>
-                  </div>
-                  <div className="w-1 h-1 rounded-full bg-slate-600" />
-                  <p className="text-center text-xs text-slate-500">
-                    Acceso restringido
-                  </p>
                 </div>
               </form>
+
+              {/* Separador elegante */}
+              <div className="relative py-4">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-700/50"></div>
+                </div>
+                <div className="relative flex justify-center">
+                  <span className="bg-slate-900 px-4 text-xs text-slate-500 uppercase tracking-wider">¿No tienes acceso?</span>
+                </div>
+              </div>
+
+              {/* Tarjeta de Beneficios */}
+              <div className={`p-4 rounded-xl bg-gradient-to-br from-slate-800/80 to-slate-900/80 border border-slate-700/50 transition-all duration-700 delay-400 ${
+                mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+              }`}>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center border border-amber-500/30">
+                    <Sparkles className="w-4 h-4 text-amber-400" />
+                  </div>
+                  <h3 className="font-semibold text-slate-200 text-sm">Suscripción Mensual</h3>
+                </div>
+                
+                <ul className="space-y-2 mb-4">
+                  <li className="flex items-center gap-2 text-xs text-slate-400">
+                    <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Acceso completo a todos los módulos</span>
+                  </li>
+                  <li className="flex items-center gap-2 text-xs text-slate-400">
+                    <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Soporte técnico prioritario</span>
+                  </li>
+                  <li className="flex items-center gap-2 text-xs text-slate-400">
+                    <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Descuento por pronto pago</span>
+                  </li>
+                </ul>
+
+                {/* Botón WhatsApp */}
+                <a 
+                  href="https://wa.me/584247708542?text=Hola%2C%20quiero%20adquirir%20una%20licencia%20para%20Cuaderno%20Digital.%20Mi%20nombre%20es..."
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-lg bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-500 hover:to-green-400 text-white font-medium text-sm transition-all duration-200 hover:shadow-lg hover:shadow-emerald-500/20 active:scale-[0.98]"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  Adquirir tu suscripción aquí
+                </a>
+                
+                <p className="text-center text-[10px] text-slate-500 mt-2">
+                  Te responderemos en minutos vía WhatsApp
+                </p>
+              </div>
+
+              {/* Footer con indicadores de seguridad */}
+              <div className="flex items-center justify-center gap-4 pt-2">
+                <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                  <Shield className="w-3.5 h-3.5 text-green-400" />
+                  <span>Conexión segura</span>
+                </div>
+                <div className="w-1 h-1 rounded-full bg-slate-600" />
+                <p className="text-center text-xs text-slate-500">
+                  Acceso restringido
+                </p>
+              </div>
             </div>
           </div>
         </div>
