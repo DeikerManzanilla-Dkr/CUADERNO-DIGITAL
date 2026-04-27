@@ -6,7 +6,9 @@ const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/favicon(1).ico',
+  '/favicon.ico',
+  '/icon-192x192.png',
+  '/icon-512x512.png',
   '/placeholder.svg'
 ];
 
@@ -104,8 +106,8 @@ self.addEventListener('push', (event) => {
     event.waitUntil(
       self.registration.showNotification(data.title || 'Cuaderno Digital', {
         body: data.body || 'Notificación del sistema',
-        icon: '/favicon(1).ico',
-        badge: '/favicon(1).ico',
+        icon: '/icon-192x192.png',
+        badge: '/icon-192x192.png',
         tag: data.tag || 'default',
         requireInteraction: data.requireInteraction || false
       })

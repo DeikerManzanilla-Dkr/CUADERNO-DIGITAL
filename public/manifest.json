@@ -11,7 +11,7 @@
   "lang": "es",
   "icons": [
     {
-      "src": "/favicon(1).ico",
+      "src": "/favicon.ico",
       "sizes": "64x64 32x32 24x24 16x16",
       "type": "image/x-icon"
     },
@@ -29,22 +29,6 @@
     }
   ],
   "categories": ["business", "productivity", "finance"],
-  "screenshots": [
-    {
-      "src": "/screenshot-pos.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "Punto de Venta"
-    },
-    {
-      "src": "/screenshot-mobile.png",
-      "sizes": "750x1334",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Vista Móvil"
-    }
-  ],
   "shortcuts": [
     {
       "name": "Punto de Venta",
