@@ -29,33 +29,6 @@ export default function Home() {
   const [mounted, setMounted] = useState(false);
   const [showInstallButton, setShowInstallButton] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
-  const [canShowDownload, setCanShowDownload] = useState(true);
-
-  // Verificar si debe mostrarse el botón (primera vez o pasadas 24 horas)
-  useEffect(() => {
-    const lastShown = localStorage.getItem('pwaDownloadLastShown');
-    const now = Date.now();
-    const HOURS_24 = 24 * 60 * 60 * 1000;
-    
-    if (!lastShown) {
-      // Primera vez - mostrar y guardar
-      setCanShowDownload(true);
-      localStorage.setItem('pwaDownloadLastShown', now.toString());
-      console.log('[PWA] Primera vez - botón de descarga visible');
-    } else {
-      const timeSinceLastShown = now - parseInt(lastShown);
-      if (timeSinceLastShown >= HOURS_24) {
-        // Han pasado 24 horas - mostrar y actualizar timestamp
-        setCanShowDownload(true);
-        localStorage.setItem('pwaDownloadLastShown', now.toString());
-        console.log('[PWA] 24 horas pasadas - botón de descarga visible nuevamente');
-      } else {
-        // Aún no han pasado 24 horas - ocultar
-        setCanShowDownload(false);
-        console.log('[PWA] Botón oculto - próxima vez en:', Math.ceil((HOURS_24 - timeSinceLastShown) / 3600000), 'horas');
-      }
-    }
-  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -74,20 +47,6 @@ export default function Home() {
       setShowInstallButton(true);
       console.log('[PWA] deferredPrompt guardado en window');
     };
-
-    // Verificar nuevamente si el botón de descarga debe mostrarse
-    const lastShown = localStorage.getItem('pwaDownloadLastShown');
-    const now = Date.now();
-    const HOURS_24 = 24 * 60 * 60 * 1000;
-    
-    if (!lastShown || (now - parseInt(lastShown)) >= HOURS_24) {
-      setCanShowDownload(true);
-      if (!lastShown) {
-        localStorage.setItem('pwaDownloadLastShown', now.toString());
-      }
-    } else {
-      setCanShowDownload(false);
-    }
 
     // Listen for appinstalled event
     const handleAppInstalled = () => {
@@ -167,8 +126,8 @@ export default function Home() {
       <main className="max-w-6xl mx-auto px-4 pt-16 pb-12">
         {/* Hero Text */}
         <div className={`text-center mb-12 transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-          {/* Botón de Descarga estilo Suscripción: VISIBLE en dev para ajustes */}
-          {true ? (
+          {/* Botón de Descarga: se muestra cuando Chrome detecta PWA instalable */}
+          {showInstallButton && !isInstalled ? (
             <div className="flex justify-center mb-6 animate-fade-in">
               <button
                 onClick={handleInstallClick}
