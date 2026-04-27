@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
 import AppLayout from "./components/AppLayout";
@@ -14,6 +14,31 @@ import Cobros from "./pages/Cobros";
 import Auth from "./pages/Auth";
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
+
+// Componente para redirección automática de PWA
+const PWARedirect = ({ session }: { session: Session | null }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    // Detectar si estamos en modo PWA (ventana independiente)
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches 
+      || (window.navigator as any).standalone 
+      || document.referrer.includes('android-app://');
+
+    // Si es la App instalada y estamos en el Home, mandarlo al Login o POS
+    if (isStandalone && location.pathname === '/') {
+      // Si hay sesión activa, ir a POS
+      if (session) {
+        navigate('/pos', { replace: true });
+      } else {
+        navigate('/login', { replace: true });
+      }
+    }
+  }, [location.pathname, navigate, session]);
+
+  return null;
+};
 
 const queryClient = new QueryClient();
 
@@ -49,6 +74,7 @@ const App = () => {
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <PWARedirect session={session} />
           {session ? (
             <Routes>
               <Route element={<AppLayout />}>

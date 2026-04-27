@@ -29,6 +29,33 @@ export default function Home() {
   const [mounted, setMounted] = useState(false);
   const [showInstallButton, setShowInstallButton] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [canShowDownload, setCanShowDownload] = useState(true);
+
+  // Verificar si debe mostrarse el botón (primera vez o pasadas 24 horas)
+  useEffect(() => {
+    const lastShown = localStorage.getItem('pwaDownloadLastShown');
+    const now = Date.now();
+    const HOURS_24 = 24 * 60 * 60 * 1000;
+    
+    if (!lastShown) {
+      // Primera vez - mostrar y guardar
+      setCanShowDownload(true);
+      localStorage.setItem('pwaDownloadLastShown', now.toString());
+      console.log('[PWA] Primera vez - botón de descarga visible');
+    } else {
+      const timeSinceLastShown = now - parseInt(lastShown);
+      if (timeSinceLastShown >= HOURS_24) {
+        // Han pasado 24 horas - mostrar y actualizar timestamp
+        setCanShowDownload(true);
+        localStorage.setItem('pwaDownloadLastShown', now.toString());
+        console.log('[PWA] 24 horas pasadas - botón de descarga visible nuevamente');
+      } else {
+        // Aún no han pasado 24 horas - ocultar
+        setCanShowDownload(false);
+        console.log('[PWA] Botón oculto - próxima vez en:', Math.ceil((HOURS_24 - timeSinceLastShown) / 3600000), 'horas');
+      }
+    }
+  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -39,12 +66,28 @@ export default function Home() {
       setIsInstalled(true);
     }
 
-    // Listen for beforeinstallprompt event
+    // Listen for beforeinstallprompt event - SIEMPRE se ejecuta, fuera de condicionales
     const handleBeforeInstallPrompt = (e: Event) => {
+      console.log('[PWA] Evento beforeinstallprompt detectado');
       e.preventDefault();
       window.deferredPrompt = e as Window['deferredPrompt'];
       setShowInstallButton(true);
+      console.log('[PWA] deferredPrompt guardado en window');
     };
+
+    // Verificar nuevamente si el botón de descarga debe mostrarse
+    const lastShown = localStorage.getItem('pwaDownloadLastShown');
+    const now = Date.now();
+    const HOURS_24 = 24 * 60 * 60 * 1000;
+    
+    if (!lastShown || (now - parseInt(lastShown)) >= HOURS_24) {
+      setCanShowDownload(true);
+      if (!lastShown) {
+        localStorage.setItem('pwaDownloadLastShown', now.toString());
+      }
+    } else {
+      setCanShowDownload(false);
+    }
 
     // Listen for appinstalled event
     const handleAppInstalled = () => {
@@ -105,12 +148,15 @@ export default function Home() {
               </button>
             )}
             
-            <button 
-              onClick={() => setShowLoginModal(true)}
-              className="px-4 py-2 text-sm font-medium bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg transition-colors"
-            >
-              Ingresar
-            </button>
+            {/* Botón Ingresar: SIEMPRE visible si estamos en navegador (no standalone) */}
+            {!isInstalled && (
+              <button 
+                onClick={() => setShowLoginModal(true)}
+                className="px-4 py-2 text-sm font-medium bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg transition-colors"
+              >
+                Ingresar
+              </button>
+            )}
           </div>
         </div>
       </nav>
@@ -121,10 +167,24 @@ export default function Home() {
       <main className="max-w-6xl mx-auto px-4 pt-16 pb-12">
         {/* Hero Text */}
         <div className={`text-center mb-12 transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-sm font-medium mb-6">
-            <Zap className="w-4 h-4" />
-            <span>Versión 2.0 "Rayo" - Ahora con PWA</span>
-          </div>
+          {/* Botón de Descarga estilo Suscripción: VISIBLE en dev para ajustes */}
+          {true ? (
+            <div className="flex justify-center mb-6 animate-fade-in">
+              <button
+                onClick={handleInstallClick}
+                className="group flex items-center justify-center gap-3 w-full max-w-md py-4 bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-white font-bold rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-cyan-500/20 active:scale-[0.98]"
+              >
+                <MonitorSmartphone className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                <span>Descargar Cuaderno Digital</span>
+                <Zap className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-sm font-medium mb-6">
+              <Zap className="w-4 h-4" />
+              <span>Versión 2.0 "Rayo" - Ahora con PWA</span>
+            </div>
+          )}
           
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-white mb-6">
             Tu Negocio, en un <span className="text-cyan-500">Cuaderno Inteligente</span>
