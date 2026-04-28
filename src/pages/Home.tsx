@@ -10,9 +10,12 @@ import {
   Users,
   X,
   Zap,
-  Download
+  Download,
+  ExternalLink,
+  Info
 } from 'lucide-react';
 import { AuthForm } from '@/components/AuthForm';
+import { toast } from 'sonner';
 
 // Extend Window interface for PWA install prompt
 declare global {
@@ -29,6 +32,7 @@ export default function Home() {
   const [mounted, setMounted] = useState(false);
   const [showInstallButton, setShowInstallButton] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -38,6 +42,10 @@ export default function Home() {
         (window.navigator as { standalone?: boolean }).standalone === true) {
       setIsInstalled(true);
     }
+
+    // Detectar iOS para instrucciones específicas
+    const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    setIsIOS(isIOSDevice);
 
     // Listen for beforeinstallprompt event - SIEMPRE se ejecuta, fuera de condicionales
     const handleBeforeInstallPrompt = (e: Event) => {
@@ -64,20 +72,43 @@ export default function Home() {
     };
   }, []);
 
-  const handleInstallClick = async () => {
-    if (!window.deferredPrompt) return;
-    
-    window.deferredPrompt.prompt();
-    const { outcome } = await window.deferredPrompt.userChoice;
-    
-    if (outcome === 'accepted') {
-      console.log('[PWA] Usuario instaló la app');
-    } else {
-      console.log('[PWA] Usuario rechazó la instalación');
+  const handleInstallAction = async () => {
+    // Estado A: Instalador disponible (Chrome/Android)
+    if (window.deferredPrompt) {
+      window.deferredPrompt.prompt();
+      const { outcome } = await window.deferredPrompt.userChoice;
+      
+      if (outcome === 'accepted') {
+        toast.success('¡Cuaderno Digital instalado correctamente!');
+        window.deferredPrompt = undefined;
+        setShowInstallButton(false);
+      } else {
+        toast.info('Instalación cancelada. Puedes intentarlo de nuevo cuando quieras.');
+      }
+      return;
     }
-    
-    window.deferredPrompt = undefined;
-    setShowInstallButton(false);
+
+    // Estado B: Ya está instalada
+    if (isInstalled) {
+      toast.success('¡Cuaderno Digital ya está instalado en tu dispositivo!', {
+        description: 'Busca el icono en tu pantalla de inicio para abrirlo.',
+        duration: 5000
+      });
+      return;
+    }
+
+    // Estado C: No compatible o iOS (instrucciones manuales)
+    if (isIOS) {
+      toast.info('Para instalar en iPhone/iPad:', {
+        description: 'Toca el botón Compartir (↗️) y selecciona "Agregar a pantalla de inicio"',
+        duration: 8000
+      });
+    } else {
+      toast.info('Usa Chrome en Android o Safari en iOS para instalar la app', {
+        description: 'Tu navegador actual no soporta instalación directa.',
+        duration: 6000
+      });
+    }
   };
 
   return (
@@ -95,17 +126,20 @@ export default function Home() {
             <span>TCD</span>
           </div>
           <div className="flex items-center gap-2">
-            {/* Botón de Instalación PWA */}
-            {showInstallButton && !isInstalled && (
-              <button
-                onClick={handleInstallClick}
-                className="hidden sm:flex items-center gap-2 px-3 py-2 text-sm font-medium bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 rounded-lg transition-colors"
-                title="Instalar como app en tu dispositivo"
-              >
-                <Download className="w-4 h-4" />
-                <span>Instalar App</span>
-              </button>
-            )}
+            {/* Botón de Instalación PWA - Siempre visible con estado adaptativo */}
+            <button
+              onClick={handleInstallAction}
+              className="hidden sm:flex items-center gap-2 px-3 py-2 text-sm font-medium bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 rounded-lg transition-colors"
+              title={isInstalled ? "App ya instalada" : showInstallButton ? "Instalar como app" : "Ver opciones de instalación"}
+            >
+              {showInstallButton && !isInstalled ? (
+                <><Download className="w-4 h-4" /><span>Instalar App</span></>
+              ) : isInstalled ? (
+                <><ExternalLink className="w-4 h-4" /><span>App Instalada</span></>
+              ) : (
+                <><Info className="w-4 h-4" /><span>Instalar</span></>
+              )}
+            </button>
             
             {/* Botón Ingresar: SIEMPRE visible si estamos en navegador (no standalone) */}
             {!isInstalled && (
@@ -126,24 +160,37 @@ export default function Home() {
       <main className="max-w-6xl mx-auto px-4 pt-16 pb-12">
         {/* Hero Text */}
         <div className={`text-center mb-12 transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-          {/* Botón de Descarga: se muestra cuando Chrome detecta PWA instalable */}
-          {showInstallButton && !isInstalled ? (
-            <div className="flex justify-center mb-6 animate-fade-in">
-              <button
-                onClick={handleInstallClick}
-                className="group flex items-center justify-center gap-3 w-full max-w-md py-4 bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-white font-bold rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-cyan-500/20 active:scale-[0.98]"
-              >
-                <MonitorSmartphone className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                <span>Descargar Cuaderno Digital</span>
-                <Zap className="w-4 h-4" />
-              </button>
+          {/* Botón de Instalación con 3 Estados y Badge de Versión */}
+          <div className="flex flex-col items-center gap-3 mb-6">
+            <button
+              onClick={handleInstallAction}
+              className="group relative flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-white font-bold rounded-2xl transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/20 hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <MonitorSmartphone className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              <span>
+                {showInstallButton && !isInstalled 
+                  ? 'Descargar Cuaderno Digital'
+                  : isInstalled 
+                    ? 'Abrir App Instalada'
+                    : 'Instalar App'}
+              </span>
+              {showInstallButton && !isInstalled ? (
+                <Zap className="w-4 h-4 animate-pulse" />
+              ) : isInstalled ? (
+                <ExternalLink className="w-4 h-4" />
+              ) : (
+                <Info className="w-4 h-4" />
+              )}
+            </button>
+
+            {/* Badge de Versión siempre visible debajo */}
+            <div className="flex items-center gap-2 px-4 py-1.5 bg-slate-800/50 border border-cyan-500/30 rounded-full">
+              <Zap className="w-3 h-3 text-cyan-400" />
+              <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-widest">
+                Actualización v2.0 "Rayo"
+              </span>
             </div>
-          ) : (
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-sm font-medium mb-6">
-              <Zap className="w-4 h-4" />
-              <span>Versión 2.0 "Rayo" - Ahora con PWA</span>
-            </div>
-          )}
+          </div>
           
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-white mb-6">
             Tu Negocio, en un <span className="text-cyan-500">Cuaderno Inteligente</span>
