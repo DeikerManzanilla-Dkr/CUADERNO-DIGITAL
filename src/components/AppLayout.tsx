@@ -3,7 +3,7 @@ import { Package, ShoppingCart, BarChart3, LogOut, DollarSign, Clock, AlertCircl
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
-import { differenceInDays, parseISO, isAfter } from "date-fns";
+import { differenceInDays, parseISO } from "date-fns";
 import BarcodeScanner from "@/components/BarcodeScanner";
 import { ScannerProvider, useScanner } from "@/contexts/ScannerContext";
 
@@ -13,20 +13,11 @@ const navItems = [
   { to: "/reportes", label: "Reportes", icon: BarChart3 },
 ];
 
-interface UserProfile {
-  business_name: string | null;
-  subscription_status: boolean | null;
-  expires_at: string | null;
-  paid_early: boolean | null;
-}
-
 const AppLayoutContent = () => {
   const navigate = useNavigate();
   const { isScannerOpen, openScanner, closeScanner, onCodeDetected } = useScanner();
   const [businessName, setBusinessName] = useState<string>("Mi Negocio");
-  const [loading, setLoading] = useState(true);
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
-  const [subscriptionActive, setSubscriptionActive] = useState<boolean>(true);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -40,29 +31,21 @@ const AppLayoutContent = () => {
           .eq("id", user.id)
           .maybeSingle();
 
-        // Type assertion temporal hasta que se ejecute la migración SQL
         const profileData = profile as any;
 
         if (profileData?.business_name) {
           setBusinessName(profileData.business_name);
         }
 
-        // Calcular días restantes de licencia
         if (profileData?.expires_at) {
           const expiryDate = parseISO(profileData.expires_at);
           const today = new Date();
           const days = differenceInDays(expiryDate, today);
-          
-          // Si pagó antes del día 5, extender 5 días extra
           const finalDays = profileData.paid_early && days > 0 ? days + 5 : days;
-          
           setDaysRemaining(finalDays);
-          setSubscriptionActive(profileData.subscription_status ?? true);
         }
       } catch (error) {
         // Silencioso para producción
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -91,32 +74,24 @@ const AppLayoutContent = () => {
               MI <span className="text-cyan-400">NEGOCIO</span>
             </span>
           </Link>
-          {/* Indicador de días de licencia - Desktop */}
-          {daysRemaining !== null && (
-            <div className="hidden md:flex items-center">
-              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium ${
-                daysRemaining <= 3 
-                  ? "bg-red-500/10 border-red-500/30 text-red-400" 
-                  : daysRemaining <= 7 
-                    ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
-                    : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-              }`}>
-                {daysRemaining <= 3 ? (
-                  <AlertCircle className="w-3 h-3" />
-                ) : (
-                  <Clock className="w-3 h-3" />
-                )}
-                <span>
-                  {daysRemaining > 0 
-                    ? `${daysRemaining} día${daysRemaining !== 1 ? 's' : ''} restante${daysRemaining !== 1 ? 's' : ''}`
-                    : "Licencia vencida"
-                  }
-                </span>
-              </div>
-            </div>
-          )}
 
           <nav className="flex items-center gap-1">
+            {/* Indicador de días - Desktop */}
+            {daysRemaining !== null && (
+              <div className="hidden md:flex items-center mr-2">
+                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium ${
+                  daysRemaining <= 3 
+                    ? "bg-red-500/10 border-red-500/30 text-red-400" 
+                    : daysRemaining <= 7 
+                      ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
+                      : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                }`}>
+                  {daysRemaining <= 3 ? <AlertCircle className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                  <span>{daysRemaining > 0 ? `${daysRemaining} días restantes` : "Licencia vencida"}</span>
+                </div>
+              </div>
+            )}
+
             {navItems.map((item) => (
               <NavLink
                 key={item.to}
@@ -134,16 +109,14 @@ const AppLayoutContent = () => {
               </NavLink>
             ))}
             
-            {/* Indicador de días - Mobile (solo icono) */}
+            {/* Indicador de días - Mobile */}
             {daysRemaining !== null && daysRemaining <= 7 && (
               <div className="md:hidden flex items-center">
-                <div className={`w-2 h-2 rounded-full ${
-                  daysRemaining <= 3 ? "bg-red-500 animate-pulse" : "bg-amber-500"
-                }`} title={`${daysRemaining} días restantes`} />
+                <div className={`w-2 h-2 rounded-full ${daysRemaining <= 3 ? "bg-red-500 animate-pulse" : "bg-amber-500"}`} />
               </div>
             )}
             
-            <Button variant="ghost" size="icon" onClick={handleLogout} className="ml-2 text-muted-foreground hover:text-destructive">
+            <Button variant="ghost" size="icon" onClick={handleLogout} className="ml-2 text-muted-foreground hover:text-destructive" title="Salir">
               <LogOut className="w-4 h-4" />
             </Button>
           </nav>

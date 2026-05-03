@@ -150,7 +150,7 @@ export default function Home() {
               )}
             </button>
             
-            {/* Botón Ingresar: SIEMPRE visible si estamos en navegador (no standalone) */}
+            {/* Botón Ingresar */}
             {!isInstalled && (
               <button 
                 onClick={() => setShowLoginModal(true)}
@@ -459,9 +459,7 @@ export default function Home() {
         </p>
       </footer>
 
-      {/* ============================================
-          4. MODAL DE LOGIN
-          ============================================ */}
+      {/* Modal de Login */}
       {showLoginModal && (
         <div 
           className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in"
@@ -470,15 +468,12 @@ export default function Home() {
           }}
         >
           <div className="relative w-full max-w-md animate-in zoom-in-95 duration-200">
-            {/* Botón cerrar */}
             <button 
               onClick={() => setShowLoginModal(false)}
               className="absolute -top-12 right-0 text-slate-400 hover:text-white transition-colors p-2"
             >
               <X className="w-6 h-6" />
             </button>
-            
-            {/* Componente AuthForm */}
             <AuthForm 
               onSuccess={() => setShowLoginModal(false)}
             />
