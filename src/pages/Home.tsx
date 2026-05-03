@@ -12,7 +12,11 @@ import {
   Zap,
   Download,
   ExternalLink,
-  Info
+  Info,
+  Wallet,
+  Smartphone,
+  CreditCard,
+  MessageCircle
 } from 'lucide-react';
 import { AuthForm } from '@/components/AuthForm';
 import { toast } from 'sonner';
@@ -33,6 +37,11 @@ export default function Home() {
   const [showInstallButton, setShowInstallButton] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+  
+  // Estados para selector de pagos
+  const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
+  const [reference, setReference] = useState('');
+  const [paymentAmount, setPaymentAmount] = useState('15');
 
   useEffect(() => {
     setMounted(true);
@@ -249,10 +258,10 @@ export default function Home() {
       </main>
 
       {/* ============================================
-          3. SECCIÓN DE SUSCRIPCIÓN (CTA)
+          3. SECCIÓN DE SUSCRIPCIÓN (CTA) - PORTAL DE PAGOS INTERACTIVO
           ============================================ */}
       <section className="border-t border-slate-800/50 bg-slate-900/20 py-16">
-        <div className="max-w-md mx-auto px-4">
+        <div className="max-w-2xl mx-auto px-4">
           <div className={`p-8 rounded-3xl bg-slate-900 border border-slate-700 shadow-2xl relative overflow-hidden transition-all duration-700 delay-400 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
             {/* Badge de descuento */}
             <div className="absolute -top-1 right-4">
@@ -261,40 +270,183 @@ export default function Home() {
               </div>
             </div>
             
-            <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold text-white mb-2">Suscripción Mensual</h2>
-              <p className="text-slate-400 text-sm">Acceso completo a todos los módulos</p>
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-white mb-2">Adquirir Suscripción</h2>
+              <p className="text-slate-400 text-sm">Selecciona tu método de pago preferido</p>
             </div>
-            
-            <ul className="space-y-3 mb-8">
-              {[
-                'Punto de Venta Ilimitado',
-                'Control de Inventario',
-                'Sistema de Fiados',
-                'Reportes de Ganancia Neta',
-                'Soporte Técnico Prioritario',
-                'Pago Móvil, USDT, Zelle'
-              ].map((item, i) => (
-                <li key={i} className="flex items-center gap-3 text-slate-300 text-sm">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
 
-            {/* Botón WhatsApp */}
-            <a 
-              href="https://wa.me/584247708542?text=Hola,%20quiero%20adquirir%20una%20licencia%20para%20Cuaderno%20Digital.%20Mi%20nombre%20es..."
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center justify-center gap-2 w-full py-4 bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-500 hover:to-green-400 text-white font-bold rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-emerald-500/20 active:scale-[0.98]"
-            >
-              Adquirir Suscripción
-              <ArrowRight className="w-5 h-5" />
-            </a>
+            {/* Grid de Métodos de Pago */}
+            <div className="grid grid-cols-3 gap-3 mb-6">
+              {/* Binance Pay */}
+              <button
+                onClick={() => setSelectedMethod('binance')}
+                className={`p-4 rounded-xl border transition-all duration-300 flex flex-col items-center gap-2 ${
+                  selectedMethod === 'binance'
+                    ? 'bg-amber-500/10 border-amber-500/50 shadow-lg shadow-amber-500/10'
+                    : 'bg-slate-800 border-slate-700 hover:border-amber-500/30'
+                }`}
+              >
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                  selectedMethod === 'binance' ? 'bg-amber-500/20' : 'bg-slate-700'
+                }`}>
+                  <Wallet className={`w-5 h-5 ${selectedMethod === 'binance' ? 'text-amber-400' : 'text-slate-400'}`} />
+                </div>
+                <span className={`text-xs font-medium ${selectedMethod === 'binance' ? 'text-amber-400' : 'text-slate-400'}`}>
+                  Binance
+                </span>
+              </button>
+
+              {/* Pago Móvil */}
+              <button
+                onClick={() => setSelectedMethod('pagomovil')}
+                className={`p-4 rounded-xl border transition-all duration-300 flex flex-col items-center gap-2 ${
+                  selectedMethod === 'pagomovil'
+                    ? 'bg-blue-500/10 border-blue-500/50 shadow-lg shadow-blue-500/10'
+                    : 'bg-slate-800 border-slate-700 hover:border-blue-500/30'
+                }`}
+              >
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                  selectedMethod === 'pagomovil' ? 'bg-blue-500/20' : 'bg-slate-700'
+                }`}>
+                  <Smartphone className={`w-5 h-5 ${selectedMethod === 'pagomovil' ? 'text-blue-400' : 'text-slate-400'}`} />
+                </div>
+                <span className={`text-xs font-medium ${selectedMethod === 'pagomovil' ? 'text-blue-400' : 'text-slate-400'}`}>
+                  Pago Móvil
+                </span>
+              </button>
+
+              {/* Stripe / Tarjeta */}
+              <button
+                onClick={() => setSelectedMethod('stripe')}
+                className={`p-4 rounded-xl border transition-all duration-300 flex flex-col items-center gap-2 ${
+                  selectedMethod === 'stripe'
+                    ? 'bg-indigo-500/10 border-indigo-500/50 shadow-lg shadow-indigo-500/10'
+                    : 'bg-slate-800 border-slate-700 hover:border-indigo-500/30'
+                }`}
+              >
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                  selectedMethod === 'stripe' ? 'bg-indigo-500/20' : 'bg-slate-700'
+                }`}>
+                  <CreditCard className={`w-5 h-5 ${selectedMethod === 'stripe' ? 'text-indigo-400' : 'text-slate-400'}`} />
+                </div>
+                <span className={`text-xs font-medium ${selectedMethod === 'stripe' ? 'text-indigo-400' : 'text-slate-400'}`}>
+                  Tarjeta
+                </span>
+              </button>
+            </div>
+
+            {/* Panel de Datos según método seleccionado */}
+            {selectedMethod === 'binance' && (
+              <div className="bg-amber-950/20 border border-amber-500/20 rounded-xl p-5 mb-6">
+                <h3 className="text-amber-400 font-semibold mb-3 flex items-center gap-2">
+                  <Wallet className="w-4 h-4" />
+                  Datos para Binance Pay
+                </h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between items-center py-2 border-b border-amber-500/10">
+                    <span className="text-slate-400">ID de Pay:</span>
+                    <span className="text-slate-200 font-mono">495 123 655</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-slate-400">Monto:</span>
+                    <span className="text-white font-semibold">10.00 USDT</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {selectedMethod === 'pagomovil' && (
+              <div className="bg-blue-950/20 border border-blue-500/20 rounded-xl p-5 mb-6">
+                <h3 className="text-blue-400 font-semibold mb-3 flex items-center gap-2">
+                  <Smartphone className="w-4 h-4" />
+                  Datos para Pago Móvil
+                </h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between items-center py-2 border-b border-blue-500/10">
+                    <span className="text-slate-400">Banco:</span>
+                    <span className="text-slate-200">Banco de Venezuela</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-blue-500/10">
+                    <span className="text-slate-400">Teléfono:</span>
+                    <span className="text-slate-200 font-mono">0424-7708542</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-blue-500/10">
+                    <span className="text-slate-400">ID:</span>
+                    <span className="text-slate-200 font-mono">V-31239605</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-slate-400">Monto:</span>
+                    <span className="text-white font-semibold">Equiv.  USD</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {selectedMethod === 'stripe' && (
+              <div className="bg-indigo-950/20 border border-indigo-500/20 rounded-xl p-5 mb-6">
+                <h3 className="text-indigo-400 font-semibold mb-3 flex items-center gap-2">
+                  <CreditCard className="w-4 h-4" />
+                  Pago con Tarjeta
+                </h3>
+                <p className="text-slate-400 text-sm mb-4">
+                  Serás redirigido a nuestra pasarela de pagos segura para completar la transacción.
+                </p>
+                <div className="flex items-center justify-between py-2 text-sm">
+                  <span className="text-slate-400">Monto a pagar:</span>
+                  <span className="text-white font-semibold">$10.00 USD</span>
+                </div>
+              </div>
+            )}
+
+            {/* Input de Referencia (solo para Binance y Pago Móvil) */}
+            {selectedMethod && selectedMethod !== 'stripe' && (
+              <div className="mb-6">
+                <label className="block text-sm text-slate-400 mb-2">
+                  Número de Referencia / Hash de transacción
+                </label>
+                <input
+                  type="text"
+                  value={reference}
+                  onChange={(e) => setReference(e.target.value)}
+                  placeholder={selectedMethod === 'binance' ? '0x... o número de referencia' : 'Últimos 4 dígitos o ref.'}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/20 transition-all outline-none"
+                />
+              </div>
+            )}
+
+            {/* Botón WhatsApp Dinámico */}
+            {selectedMethod && (
+              <a
+                href={(() => {
+                  const phone = '584247708542';
+                  let message = '';
+                  if (selectedMethod === 'binance') {
+                    message = `Hola, elegí pagar por Binance Pay. Mi referencia es: ${reference || '[pendiente]'} ¿Me confirmas la recepción de los 15 USDT?`;
+                  } else if (selectedMethod === 'pagomovil') {
+                    message = `Hola, ya hice el Pago Móvil. Mi referencia es: ${reference || '[pendiente]'} ¿Me confirmas la recepción?`;
+                  } else if (selectedMethod === 'stripe') {
+                    message = 'Hola, quiero pagar mi suscripción con tarjeta de crédito/débito. ¿Me envías el link de pago?';
+                  }
+                  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+                })()}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-center gap-2 w-full py-4 bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-500 hover:to-green-400 text-white font-bold rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-emerald-500/20 active:scale-[0.98]"
+              >
+                <MessageCircle className="w-5 h-5" />
+                {selectedMethod === 'stripe' ? 'Solicitar Link de Pago' : 'Notificar Pago por WhatsApp'}
+                <ArrowRight className="w-5 h-5" />
+              </a>
+            )}
+
+            {!selectedMethod && (
+              <div className="text-center py-4">
+                <p className="text-slate-500 text-sm">Selecciona un método de pago arriba para continuar</p>
+              </div>
+            )}
 
             <p className="text-center text-xs text-slate-500 mt-4">
-              Te responderemos en minutos vía WhatsApp
+              Activación inmediata tras confirmar el pago
             </p>
           </div>
         </div>

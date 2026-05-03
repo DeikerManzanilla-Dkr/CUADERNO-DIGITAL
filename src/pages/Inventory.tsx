@@ -17,8 +17,11 @@ import {
   AlertTriangle,
   Archive,
   ChevronRight,
-  X
+  X,
+  ScanLine
 } from "lucide-react";
+import BarcodeScanner from "@/components/BarcodeScanner";
+import { playBeep } from "@/utils/audio";
 
 interface Product {
   id: string;
@@ -66,6 +69,7 @@ const Inventory = () => {
   const [quantity, setQuantity] = useState("");
   const [category, setCategory] = useState("viveres");
   const [editingExisting, setEditingExisting] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
 
   // Calcular base_price y iva_amount desde final_price
   const calculateIvaFromFinal = (final: number) => {
@@ -206,17 +210,21 @@ const Inventory = () => {
 
   return (
     <div className="min-h-screen bg-[#0f172a] p-4 lg:p-6">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-[1600px] mx-auto">
+      <div className="grid grid-cols-12 gap-6 max-w-[1600px] mx-auto">
         
         {/* Formulario de Ingreso */}
-        <div className="lg:col-span-4 xl:col-span-3">
+        <div className="col-span-12 lg:col-span-4 xl:col-span-3">
           <div className="sticky top-6 space-y-6">
             
             {/* Header */}
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center shadow-lg">
-                <Package className="w-6 h-6 text-slate-300" />
-              </div>
+              <button
+                onClick={() => setIsScanning(true)}
+                className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center shadow-lg hover:bg-cyan-500/10 hover:border-cyan-500/50 transition-all group cursor-pointer"
+                title="Escanear código"
+              >
+                <ScanLine className="w-6 h-6 text-slate-300 group-hover:text-cyan-400 transition-colors" />
+              </button>
               <div>
                 <h1 className="text-xl font-bold text-slate-100">
                   Inventario
@@ -343,7 +351,7 @@ const Inventory = () => {
         </div>
 
         {/* Lista de Productos */}
-        <div className="lg:col-span-8 xl:col-span-9 space-y-6">
+        <div className="col-span-12 lg:col-span-8 xl:col-span-9 space-y-6">
           
           {/* Header y Filtros */}
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
@@ -396,11 +404,11 @@ const Inventory = () => {
             ))}
           </div>
 
-          {/* Lista de Productos - Estilo Cuaderno en Móvil, Tarjetas en Desktop */}
+          {/* Lista de Productos */}
           {loading ? (
-            <div className="flex flex-col md:grid md:grid-cols-2 xl:grid-cols-3 gap-1 md:gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="h-16 md:h-48 rounded-lg md:rounded-xl bg-slate-800/50 animate-pulse border-b md:border border-slate-700/50" />
+                <div key={i} className="h-48 rounded-xl bg-slate-800/50 animate-pulse border border-slate-700/50" />
               ))}
             </div>
           ) : filtered.length === 0 ? (
@@ -412,7 +420,7 @@ const Inventory = () => {
               <p className="text-slate-500 text-sm mt-2">Agrega tu primer producto usando el formulario</p>
             </div>
           ) : (
-            <div className="flex flex-col md:grid md:grid-cols-2 xl:grid-cols-3 gap-0 md:gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {filtered.map((p, index) => {
                 const isLowStock = p.stock <= 5;
                 const isHovered = hoveredProduct === p.id;
@@ -426,42 +434,8 @@ const Inventory = () => {
                     className="animate-in fade-in duration-300"
                     style={{ animationDelay: `${index * 30}ms` }}
                   >
-                    {/* Vista Móvil: Fila compacta tipo lista */}
-                    <div className={`md:hidden flex items-center justify-between py-3 px-3 border-b border-slate-800 ${
-                      isLowStock ? "bg-amber-500/5" : ""
-                    }`}>
-                      {/* Izquierda: Nombre y SKU */}
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <div className={`w-8 h-8 rounded flex items-center justify-center flex-shrink-0 ${
-                          isLowStock ? "bg-amber-500/10" : "bg-slate-800"
-                        }`}>
-                          {isLowStock ? (
-                            <AlertTriangle className="w-4 h-4 text-amber-500" />
-                          ) : (
-                            <CategoryIcon className="w-4 h-4 text-slate-500" />
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <h3 className="text-sm font-medium text-slate-200 truncate">{p.name}</h3>
-                          <p className="text-[10px] text-slate-500 font-mono">{p.sku}</p>
-                        </div>
-                      </div>
-                      
-                      {/* Derecha: Stock y Precio */}
-                      <div className="flex items-center gap-3 flex-shrink-0 ml-2">
-                        <div className={`text-xs font-mono font-medium ${
-                          isLowStock ? "text-amber-400" : p.stock <= 20 ? "text-yellow-400" : "text-emerald-400"
-                        }`}>
-                          {p.stock}u
-                        </div>
-                        <div className="text-sm font-mono font-semibold text-slate-200">
-                          ${Number(p.final_price).toFixed(0)}
-                        </div>
-                      </div>
-                    </div>
-
                     {/* Vista Desktop: Tarjeta completa */}
-                    <div className={`hidden md:block h-full rounded-xl border transition-all duration-200 overflow-hidden ${
+                    <div className={`h-full rounded-xl border transition-all duration-200 overflow-hidden ${
                       isLowStock
                         ? "bg-slate-900 border-amber-500/30 shadow-lg"
                         : isHovered
@@ -555,6 +529,37 @@ const Inventory = () => {
           )}
         </div>
       </div>
+
+      {/* Modal del Escáner */}
+      {isScanning && (
+        <BarcodeScanner
+          isOpen={isScanning}
+          onClose={() => setIsScanning(false)}
+          onCodeDetected={(code) => {
+            // BLINDAJE: Validar código antes de procesar
+            if (!code || typeof code !== 'string') {
+              console.warn("⚠️ [INVENTORY] Código inválido recibido:", code);
+              return;
+            }
+            
+            const trimmedCode = code.trim();
+            
+            // BLINDAJE: Ignorar si está vacío después de trim
+            if (trimmedCode.length === 0) {
+              console.warn("⚠️ [INVENTORY] Código vacío, ignorando");
+              return;
+            }
+            
+            // Feedback INMEDIATO (Beep)
+            playBeep();
+            
+            setSku(trimmedCode);
+            setIsScanning(false);
+            checkSku(trimmedCode);
+            toast.success(`Código escaneado: ${trimmedCode}`);
+          }}
+        />
+      )}
     </div>
   );
 };

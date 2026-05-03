@@ -1,9 +1,11 @@
 import { NavLink, Outlet, useNavigate, Link } from "react-router-dom";
-import { Package, ShoppingCart, BarChart3, LogOut, DollarSign, Clock, AlertCircle } from "lucide-react";
+import { Package, ShoppingCart, BarChart3, LogOut, DollarSign, Clock, AlertCircle, Store, ScanLine } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { differenceInDays, parseISO, isAfter } from "date-fns";
+import BarcodeScanner from "@/components/BarcodeScanner";
+import { ScannerProvider, useScanner } from "@/contexts/ScannerContext";
 
 const navItems = [
   { to: "/inventario", label: "Inventario", icon: Package },
@@ -18,8 +20,9 @@ interface UserProfile {
   paid_early: boolean | null;
 }
 
-const AppLayout = () => {
+const AppLayoutContent = () => {
   const navigate = useNavigate();
+  const { isScannerOpen, openScanner, closeScanner, onCodeDetected } = useScanner();
   const [businessName, setBusinessName] = useState<string>("Mi Negocio");
   const [loading, setLoading] = useState(true);
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
@@ -75,17 +78,17 @@ const AppLayout = () => {
     <div className="min-h-screen bg-background flex flex-col">
       <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container flex items-center justify-between h-14 px-4">
-          <Link to="/pos" className="flex items-center gap-2 group hover:opacity-80 transition-opacity cursor-pointer">
-            <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center group-hover:scale-105 transition-transform">
-              <ShoppingCart className="w-4 h-4 text-primary-foreground" />
+          <Link to="/pos" className="flex items-center gap-3 group hover:opacity-80 transition-opacity cursor-pointer">
+            <div className="bg-cyan-500 p-2 rounded-xl shadow-lg shadow-cyan-500/20 group-hover:rotate-12 transition-transform">
+              <Store className="w-6 h-6 text-white" />
             </div>
             <div className="hidden sm:flex flex-col leading-tight">
-              <span className="font-bold text-sm tracking-tight">
-                {loading ? "Cargando..." : businessName}
+              <span className="text-xl font-black text-slate-100 tracking-tighter">
+                MI <span className="text-cyan-400">NEGOCIO</span>
               </span>
             </div>
-            <span className="sm:hidden font-bold text-sm tracking-tight">
-              {businessName.slice(0, 15)}
+            <span className="sm:hidden text-lg font-black text-slate-100 tracking-tighter">
+              MI <span className="text-cyan-400">NEGOCIO</span>
             </span>
           </Link>
           {/* Indicador de días de licencia - Desktop */}
@@ -119,14 +122,14 @@ const AppLayout = () => {
                 key={item.to}
                 to={item.to}
                 className={({ isActive }) =>
-                  `flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  `flex items-center gap-2 px-4 py-3 sm:px-3 sm:py-1.5 rounded-md text-sm font-medium transition-colors min-h-[44px] sm:min-h-0 ${
                     isActive
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:text-foreground hover:bg-secondary"
                   }`
                 }
               >
-                <item.icon className="w-4 h-4" />
+                <item.icon className="w-5 h-5 sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline">{item.label}</span>
               </NavLink>
             ))}
@@ -149,7 +152,22 @@ const AppLayout = () => {
       <main className="flex-1 container px-4 py-6">
         <Outlet />
       </main>
+      
+      {/* Modal de Escáner */}
+      <BarcodeScanner 
+        isOpen={isScannerOpen} 
+        onClose={closeScanner} 
+        onCodeDetected={onCodeDetected} 
+      />
     </div>
+  );
+};
+
+const AppLayout = () => {
+  return (
+    <ScannerProvider>
+      <AppLayoutContent />
+    </ScannerProvider>
   );
 };
 

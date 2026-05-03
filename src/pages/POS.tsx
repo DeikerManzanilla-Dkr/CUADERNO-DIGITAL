@@ -4,9 +4,12 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Search, Trash2, Plus, Minus, ShoppingCart, RefreshCw, CreditCard, Banknote, Sparkles, Package, ArrowRight, X } from "lucide-react";
+import { Search, Trash2, Plus, Minus, ShoppingCart, RefreshCw, CreditCard, Banknote, Sparkles, Package, ArrowRight, X, ScanLine } from "lucide-react";
 import { useExchangeRate, formatBs } from "@/services/bcvService";
 import SaleSuccessOverlay from "@/components/SaleSuccessOverlay";
+import { useScanner } from "@/contexts/ScannerContext";
+import BarcodeScanner from "@/components/BarcodeScanner";
+import { playBeep, playErrorBeep } from "@/utils/audio";
 
 interface CartItem {
   product_id: string;
@@ -57,6 +60,8 @@ const POS = () => {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const { rate, loading: loadingRate, fetchRate, setManualRate } = useExchangeRate();
+  const { setCodeHandler } = useScanner();
+  const [isScanning, setIsScanning] = useState(false); // Escáner local en POS
 
   // Efecto para cerrar dropdown al hacer clic fuera
   useEffect(() => {
@@ -171,6 +176,65 @@ const POS = () => {
     setShowDropdown(false);
     inputRef.current?.focus();
   }, [cart]);
+
+  // Handler para códigos detectados (definido fuera del useEffect para estabilidad)
+  const handleCodeDetected = async (code: string | null | undefined) => {
+    if (!code) return;
+    const trimmedCode = code.trim();
+
+    // 1. Feedback INMEDIATO (Beep) - ocurre al instante, sin esperar BD
+    playBeep();
+
+    console.log("🔍 Buscando en BD el SKU:", trimmedCode);
+    console.log("   Longitud:", trimmedCode.length, "caracteres");
+    console.log("   Char codes:", [...trimmedCode].map(c => c.charCodeAt(0)));
+
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .eq("sku", trimmedCode)
+      .maybeSingle();
+
+    if (error) {
+      console.error("❌ Error Supabase:", error);
+      playErrorBeep();
+      toast.error(`Error de base de datos: ${error.message}`);
+      return;
+    }
+
+    if (data) {
+      console.log("✅ Producto hallado:", data);
+      addProductToCart(data as Product);
+      toast.success(`¡Agregado! ${data.name}`);
+    } else {
+      console.warn("⚠️ Código escaneado pero NO EXISTE en tabla products:", trimmedCode);
+      console.warn("   Revisa: ¿El SKU en la BD es exactamente '" + trimmedCode + "'?");
+      playErrorBeep();
+      toast.error(`Producto no encontrado: ${trimmedCode}`);
+      
+      const { data: similar } = await supabase
+        .from("products")
+        .select("sku, name")
+        .ilike("sku", `%${trimmedCode}%`)
+        .limit(3);
+      
+      if (similar && similar.length > 0) {
+        console.log("💡 Productos similares encontrados:", similar);
+        toast.info(`¿Quizás quisiste: ${similar.map(p => p.sku).join(", ")}?`);
+      }
+    }
+  };
+
+  // Configurar handler: Registro AGRESIVO al montar, limpiar al desmontar
+  useEffect(() => {
+    console.log("📡 POS.tsx montado - Registrando handler de escáner");
+    setCodeHandler(handleCodeDetected);
+
+    return () => {
+      console.log("📡 POS.tsx desmontado - Limpiando handler");
+      setCodeHandler(null);
+    };
+  }, []); // <--- El array vacío es vital aquí
 
   const addToCart = useCallback(async () => {
     const sku = skuInput.trim().toUpperCase();
@@ -366,14 +430,17 @@ const POS = () => {
   return (
     <div className="min-h-screen bg-[#0f172a] p-4 lg:p-6">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-[1600px] mx-auto">
-        {/* Panel Principal - Búsqueda y Carrito */}
-        <div className="lg:col-span-7 xl:col-span-8 space-y-6">
-          
-          {/* Header */}
+        
+        {/* Header - Siempre arriba */}
+        <div className="lg:col-span-12">
           <div className="flex items-center gap-4 mb-2">
-            <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center shadow-lg">
-              <ShoppingCart className="w-6 h-6 text-slate-400" />
-            </div>
+            <button
+              onClick={() => setIsScanning(true)}
+              className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center shadow-lg hover:bg-slate-700 hover:border-cyan-500/50 hover:text-cyan-400 transition-all cursor-pointer group"
+              title="Escanear código"
+            >
+              <ScanLine className="w-6 h-6 text-slate-400 group-hover:text-cyan-400 transition-colors" />
+            </button>
             <div>
               <h1 className="text-2xl font-bold text-slate-100">
                 Punto de Venta
@@ -381,106 +448,109 @@ const POS = () => {
               <p className="text-xs text-slate-500 font-medium">Sistema de Facturación</p>
             </div>
           </div>
+        </div>
 
-          {/* Buscador */}
-          <div className="relative" ref={dropdownRef}>
-            <div className="relative flex items-center gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-                <Input
-                  ref={inputRef}
-                  value={skuInput}
-                  onChange={(e) => setSkuInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Código o nombre del producto..."
-                  className="w-full h-14 pl-12 pr-4 text-base bg-slate-900 border-slate-700 rounded-xl text-slate-200 placeholder:text-slate-600 focus:border-slate-500 focus:ring-1 focus:ring-slate-600"
-                  autoFocus
-                  disabled={loading}
-                />
-                {isSearching && (
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                    <span className="w-4 h-4 border-2 border-slate-600 border-t-slate-400 rounded-full animate-spin" />
+        {/* Buscador - order-1 para móvil (primero) */}
+        <div className="lg:col-span-8 order-1 lg:order-1">
+          <section className="bg-slate-900/50 border border-slate-800 p-3 rounded-3xl">
+            <div className="relative" ref={dropdownRef}>
+              <div className="relative flex items-center gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                  <Input
+                    ref={inputRef}
+                    value={skuInput}
+                    onChange={(e) => setSkuInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Código o nombre del producto..."
+                    className="w-full h-10 pl-12 pr-4 text-sm bg-slate-900 border-slate-700 rounded-xl text-slate-200 placeholder:text-slate-600 focus:border-slate-500 focus:ring-1 focus:ring-slate-600"
+                    autoFocus
+                    disabled={loading}
+                  />
+                  {isSearching && (
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                      <span className="w-4 h-4 border-2 border-slate-600 border-t-slate-400 rounded-full animate-spin" />
+                    </div>
+                  )}
+                </div>
+                
+                <Button 
+                  onClick={addToCart} 
+                  disabled={loading} 
+                  className="h-10 px-5 bg-slate-200 hover:bg-white text-slate-900 font-semibold rounded-xl shadow-md transition-all hover:scale-[1.02] active:scale-[0.98] border-0 text-sm"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Agregar
+                </Button>
+              </div>
+
+              {/* Dropdown de resultados */}
+              {showDropdown && searchResults.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden z-50">
+                  <div className="p-2 bg-slate-900 border-b border-slate-800">
+                    <p className="text-xs text-slate-500 font-medium flex items-center gap-2">
+                      <Package className="w-3 h-3" />
+                      {searchResults.length} productos
+                    </p>
                   </div>
-                )}
-              </div>
-              
-              <Button 
-                onClick={addToCart} 
-                disabled={loading} 
-                className="h-14 px-6 bg-slate-200 hover:bg-white text-slate-900 font-semibold rounded-xl shadow-md transition-all hover:scale-[1.02] active:scale-[0.98] border-0"
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                Agregar
-              </Button>
+                  <div className="max-h-[280px] overflow-y-auto">
+                    {searchResults.map((product, index) => (
+                      <button
+                        key={product.id}
+                        onClick={() => addProductToCart(product)}
+                        className={`w-full p-3 flex items-center gap-3 transition-colors text-left
+                          ${index === selectedIndex 
+                            ? 'bg-slate-700 border-l-2 border-slate-400' 
+                            : 'hover:bg-slate-750 border-l-2 border-transparent'}`}
+                      >
+                        <div className="w-10 h-10 rounded-lg bg-slate-900 flex items-center justify-center border border-slate-700">
+                          <Package className="w-5 h-5 text-slate-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-slate-200 text-sm truncate">{product.name}</p>
+                          <p className="text-xs text-slate-500 font-mono">{product.sku}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold text-slate-200 font-mono">${product.final_price.toFixed(2)}</p>
+                          <p className={`text-xs ${product.stock > 5 ? 'text-emerald-400' : product.stock > 0 ? 'text-amber-400' : 'text-red-400'}`}>
+                            Stock: {product.stock}
+                          </p>
+                        </div>
+                        {index === selectedIndex && (
+                          <ArrowRight className="w-4 h-4 text-slate-400" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="p-2 bg-slate-900/50 text-center text-xs text-cyan-500/50 border-t border-cyan-500/20">
+                    Usa ↑↓ para navegar, Enter para seleccionar
+                  </div>
+                </div>
+              )}
             </div>
+          </section>
+        </div>
 
-            {/* Dropdown de resultados */}
-            {showDropdown && searchResults.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden z-50">
-                <div className="p-2 bg-slate-900 border-b border-slate-800">
-                  <p className="text-xs text-slate-500 font-medium flex items-center gap-2">
-                    <Package className="w-3 h-3" />
-                    {searchResults.length} productos
-                  </p>
-                </div>
-                <div className="max-h-[280px] overflow-y-auto">
-                  {searchResults.map((product, index) => (
-                    <button
-                      key={product.id}
-                      onClick={() => addProductToCart(product)}
-                      className={`w-full p-3 flex items-center gap-3 transition-colors text-left
-                        ${index === selectedIndex 
-                          ? 'bg-slate-700 border-l-2 border-slate-400' 
-                          : 'hover:bg-slate-750 border-l-2 border-transparent'}`}
-                    >
-                      <div className="w-10 h-10 rounded-lg bg-slate-900 flex items-center justify-center border border-slate-700">
-                        <Package className="w-5 h-5 text-slate-500" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-slate-200 text-sm truncate">{product.name}</p>
-                        <p className="text-xs text-slate-500 font-mono">{product.sku}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-slate-200 font-mono">${product.final_price.toFixed(2)}</p>
-                        <p className={`text-xs ${product.stock > 5 ? 'text-emerald-400' : product.stock > 0 ? 'text-amber-400' : 'text-red-400'}`}>
-                          Stock: {product.stock}
-                        </p>
-                      </div>
-                      {index === selectedIndex && (
-                        <ArrowRight className="w-4 h-4 text-slate-400" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-                <div className="p-2 bg-slate-900/50 text-center text-xs text-cyan-500/50 border-t border-cyan-500/20">
-                  Usa ↑↓ para navegar, Enter para seleccionar
-                </div>
+        {/* Carrito - order-3 para móvil (último) */}
+        <div className="lg:col-span-8 order-3 lg:order-1">
+          <section className="bg-slate-900/50 border border-slate-800 rounded-3xl overflow-hidden">
+            <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-800/30">
+              <div className="flex items-center gap-2">
+                <ShoppingCart className="w-5 h-5 text-cyan-400" />
+                <h2 className="font-bold text-slate-200">Productos</h2>
+                <span className="bg-slate-700 px-2 py-0.5 rounded-full text-xs text-cyan-400">
+                  {cart.length}
+                </span>
               </div>
-            )}
-          </div>
-
-          {/* Carrito */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-lg overflow-hidden">
-            {/* Header */}
-            <div className="p-4 bg-slate-900 border-b border-slate-800">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <ShoppingCart className="w-5 h-5 text-slate-400" />
-                  <h2 className="font-semibold text-slate-200">Productos</h2>
-                  <span className="px-2.5 py-0.5 rounded-md bg-slate-800 text-slate-400 text-sm font-medium">
-                    {cart.length}
-                  </span>
-                </div>
-                {cart.length > 0 && (
-                  <button
-                    onClick={() => setCart([])}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors text-sm"
-                  >
-                    <X className="w-4 h-4" />
-                    Vaciar
-                  </button>
-                )}
-              </div>
+              {cart.length > 0 && (
+                <button
+                  onClick={() => setCart([])}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors text-sm"
+                >
+                  <X className="w-4 h-4" />
+                  Vaciar
+                </button>
+              )}
             </div>
 
             {/* Lista de productos */}
@@ -543,12 +613,12 @@ const POS = () => {
                 ))
               )}
             </div>
-          </div>
+          </section>
         </div>
 
-        {/* Panel de Resumen */}
-        <div className="lg:col-span-5 xl:col-span-4">
-          <div className="sticky top-6 space-y-4">
+        {/* COLUMNA DERECHA: Resumen de Pago - order-2 para móvil */}
+        <div className="lg:col-span-4 order-2 lg:order-2">
+          <aside className="sticky top-24 space-y-6">
             
             {/* Card de Total */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-lg overflow-hidden">
@@ -618,45 +688,33 @@ const POS = () => {
                 </div>
               </div>
 
-              {/* Detalles */}
-              <div className="px-4 pb-4 space-y-2">
-                <div className="flex justify-between items-center p-3 rounded-lg bg-slate-950 border border-slate-800">
-                  <span className="text-slate-500 text-sm">Subtotal</span>
-                  <span className="font-mono text-slate-300">${baseTotal.toFixed(2)}</span>
+              {/* Selector de Método de Pago */}
+              <div className="px-4 pb-4">
+                <Label className="text-xs text-slate-500 uppercase tracking-wider mb-3 block">Método de Pago</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setPaymentMethod("cash")}
+                    className={`flex items-center justify-center gap-2 p-3 rounded-lg border transition-all ${
+                      paymentMethod === "cash"
+                        ? "bg-slate-800/40 text-cyan-400 border-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.3)]"
+                        : "bg-slate-800/40 text-slate-400 border-slate-700 hover:border-slate-600"
+                    }`}
+                  >
+                    <Banknote className="w-4 h-4" />
+                    <span className="font-medium text-sm">Efectivo</span>
+                  </button>
+                  <button
+                    onClick={() => setPaymentMethod("credit")}
+                    className={`flex items-center justify-center gap-2 p-3 rounded-lg border transition-all ${
+                      paymentMethod === "credit"
+                        ? "bg-slate-800/40 text-cyan-400 border-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.3)]"
+                        : "bg-slate-800/40 text-slate-400 border-slate-700 hover:border-slate-600"
+                    }`}
+                  >
+                    <CreditCard className="w-4 h-4" />
+                    <span className="font-medium text-sm">Fiado</span>
+                  </button>
                 </div>
-                <div className="flex justify-between items-center p-3 rounded-lg bg-slate-950 border border-slate-800">
-                  <span className="text-slate-500 text-sm">IVA</span>
-                  <span className="font-mono text-slate-300">${ivaTotal.toFixed(2)}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Selector de Método de Pago */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-              <Label className="text-xs text-slate-500 uppercase tracking-wider mb-3 block">Método de Pago</Label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => setPaymentMethod("cash")}
-                  className={`flex items-center justify-center gap-2 p-3 rounded-lg border transition-all ${
-                    paymentMethod === "cash"
-                      ? "bg-slate-700 text-slate-100 border-slate-500 shadow-md"
-                      : "bg-slate-950 text-slate-400 border-slate-800 hover:border-slate-600"
-                  }`}
-                >
-                  <Banknote className="w-4 h-4" />
-                  <span className="font-medium text-sm">Efectivo</span>
-                </button>
-                <button
-                  onClick={() => setPaymentMethod("credit")}
-                  className={`flex items-center justify-center gap-2 p-3 rounded-lg border transition-all ${
-                    paymentMethod === "credit"
-                      ? "bg-slate-700 text-slate-100 border-slate-500 shadow-md"
-                      : "bg-slate-950 text-slate-400 border-slate-800 hover:border-slate-600"
-                  }`}
-                >
-                  <CreditCard className="w-4 h-4" />
-                  <span className="font-medium text-sm">Fiado</span>
-                </button>
               </div>
             </div>
 
@@ -728,7 +786,7 @@ const POS = () => {
               {cart.length} {cart.length === 1 ? "producto" : "productos"} en el carrito
             </p>
 
-          </div>
+          </aside>
         </div>
       </div>
 
@@ -737,6 +795,20 @@ const POS = () => {
         isOpen={showSuccessOverlay} 
         message={overlayMessage}
       />
+
+      {/* Modal del Escáner - Local en POS */}
+      {isScanning && (
+        <BarcodeScanner
+          isOpen={isScanning}
+          onClose={() => setIsScanning(false)}
+          onCodeDetected={(code) => {
+            // Cerrar escáner inmediatamente
+            setIsScanning(false);
+            // Delegar al handler maestro que busca en BD y agrega al carrito
+            handleCodeDetected(code);
+          }}
+        />
+      )}
     </div>
   );
 };
