@@ -4,24 +4,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Search, Trash2, Plus, Minus, ShoppingCart, RefreshCw, CreditCard, Banknote, Sparkles, Package, ArrowRight, X, ScanLine } from "lucide-react";
+import { Search, Trash2, Plus, Minus, ShoppingCart, RefreshCw, CreditCard, Banknote, Sparkles, Package, ArrowRight, ArrowLeft, ArrowUp, ArrowDown, DollarSign, X, ScanLine } from "lucide-react";
 import { useExchangeRate, formatBs } from "@/services/bcvService";
 import SaleSuccessOverlay from "@/components/SaleSuccessOverlay";
 import { useScanner } from "@/contexts/ScannerContext";
 import BarcodeScanner from "@/components/BarcodeScanner";
 import { playBeep, playErrorBeep } from "@/utils/audio";
 
-interface CartItem {
-  product_id: string;
-  sku: string;
-  name: string;
-  unit_price: number; // final_price con IVA incluido
-  base_price: number; // precio sin IVA
-  iva_amount: number; // monto de IVA del producto
-  cost_price: number;
-  quantity: number;
-  stock: number;
-}
+import { CartItem, CartItemType } from "@/components/CartItem";
 
 type PaymentMethod = "cash" | "credit";
 
@@ -34,10 +24,12 @@ interface Product {
   iva_amount: number;
   cost_price: number;
   stock: number;
+  category?: string;
+  sale_type?: "unit" | "weight"; // opcional para compatibilidad con productos existentes
 }
 
 const POS = () => {
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cart, setCart] = useState<CartItemType[]>([]);
   const [skuInput, setSkuInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -62,6 +54,7 @@ const POS = () => {
   const { rate, loading: loadingRate, fetchRate, setManualRate } = useExchangeRate();
   const { setCodeHandler } = useScanner();
   const [isScanning, setIsScanning] = useState(false); // Escáner local en POS
+  const [inputMode, setInputMode] = useState<"none" | "text">("none"); // Control del teclado móvil
 
   // Efecto para cerrar dropdown al hacer clic fuera
   useEffect(() => {
@@ -169,13 +162,24 @@ const POS = () => {
           cost_price: Number(product.cost_price),
           quantity: 1,
           stock: product.stock,
+          sale_type: product.category === "charcuteria" ? "weight" : (product.sale_type || "unit"),
         },
       ]);
     }
     setSkuInput("");
     setShowDropdown(false);
-    inputRef.current?.focus();
+    // No hacer focus automático para evitar teclado móvil
+    setInputMode("none");
   }, [cart]);
+
+  // Función para activar el teclado manualmente cuando el usuario toca el input
+  const handleManualInput = () => {
+    setInputMode("text");
+    // Forzar el foco después de cambiar el inputMode
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 50);
+  };
 
   // Handler para códigos detectados (definido fuera del useEffect para estabilidad)
   const handleCodeDetected = async (code: string | null | undefined) => {
@@ -184,6 +188,12 @@ const POS = () => {
 
     // 1. Feedback INMEDIATO (Beep) - ocurre al instante, sin esperar BD
     playBeep();
+
+    // 2. Limpiar foco del input para evitar teclado móvil
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    inputRef.current?.blur();
 
     console.log("🔍 Buscando en BD el SKU:", trimmedCode);
     console.log("   Longitud:", trimmedCode.length, "caracteres");
@@ -306,19 +316,19 @@ const POS = () => {
     }
   };
 
-  const updateQuantity = (sku: string, delta: number) => {
+  const updateQuantity = (sku: string, delta: number, isAbsolute: boolean = false) => {
     setCart((prev) =>
       prev
         .map((i) => {
           if (i.sku !== sku) return i;
-          const newQty = i.quantity + delta;
+          const newQty = isAbsolute ? delta : i.quantity + delta;
           if (newQty > i.stock) {
             toast.error("Stock insuficiente");
             return i;
           }
-          return { ...i, quantity: newQty };
+          return { ...i, quantity: newQty < 0 ? 0 : newQty };
         })
-        .filter((i) => i.quantity > 0)
+        .filter((i) => i.sale_type === "weight" ? i.quantity >= 0 : i.quantity > 0)
     );
   };
 
@@ -327,7 +337,11 @@ const POS = () => {
   };
 
   const processSale = async () => {
-    if (cart.length === 0) return;
+    const activeCart = cart.filter(i => i.quantity > 0);
+    if (activeCart.length === 0) {
+      toast.error("El carrito está vacío o tiene cantidades inválidas");
+      return;
+    }
     
     // Validar campos de cliente si es venta a crédito
     if (paymentMethod === "credit") {
@@ -367,7 +381,7 @@ const POS = () => {
 
       if (saleError || !sale) throw saleError;
 
-      const items = cart.map((i) => ({
+      const items = activeCart.map((i) => ({
         sale_id: sale.id,
         product_id: i.product_id,
         product_name: i.name,
@@ -381,7 +395,7 @@ const POS = () => {
       const { error: itemsError } = await supabase.from("sale_items").insert(items);
       if (itemsError) throw itemsError;
 
-      for (const item of cart) {
+      for (const item of activeCart) {
         const { error } = await supabase
           .from("products")
           .update({ stock: item.stock - item.quantity })
@@ -435,11 +449,21 @@ const POS = () => {
         <div className="lg:col-span-12">
           <div className="flex items-center gap-4 mb-2">
             <button
-              onClick={() => setIsScanning(true)}
-              className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center shadow-lg hover:bg-slate-700 hover:border-cyan-500/50 hover:text-cyan-400 transition-all cursor-pointer group"
-              title="Escanear código"
+              onClick={() => {
+                // Quitar foco del input para evitar que aparezca el teclado
+                inputRef.current?.blur();
+                setIsScanning(true);
+              }}
+              className={`w-12 h-12 rounded-xl border flex items-center justify-center shadow-lg transition-all cursor-pointer group ${
+                isScanning 
+                  ? 'bg-cyan-500/20 border-cyan-500 shadow-[0_0_20px_rgba(6,182,212,0.4)] animate-pulse' 
+                  : 'bg-slate-800 border-slate-700 hover:bg-slate-700 hover:border-cyan-500/50 hover:text-cyan-400'
+              }`}
+              title={isScanning ? 'Escáner activo...' : 'Escanear código'}
             >
-              <ScanLine className="w-6 h-6 text-slate-400 group-hover:text-cyan-400 transition-colors" />
+              <ScanLine className={`w-6 h-6 transition-colors ${
+                isScanning ? 'text-cyan-400' : 'text-slate-400 group-hover:text-cyan-400'
+              }`} />
             </button>
             <div>
               <h1 className="text-2xl font-bold text-slate-100">
@@ -462,10 +486,11 @@ const POS = () => {
                     value={skuInput}
                     onChange={(e) => setSkuInput(e.target.value)}
                     onKeyDown={handleKeyDown}
+                    onFocus={handleManualInput}
                     placeholder="Código o nombre del producto..."
                     className="w-full h-10 pl-12 pr-4 text-sm bg-slate-900 border-slate-700 rounded-xl text-slate-200 placeholder:text-slate-600 focus:border-slate-500 focus:ring-1 focus:ring-slate-600"
-                    autoFocus
                     disabled={loading}
+                    inputMode={inputMode}
                   />
                   {isSearching && (
                     <div className="absolute right-4 top-1/2 -translate-y-1/2">
@@ -565,51 +590,7 @@ const POS = () => {
                 </div>
               ) : (
                 cart.map((item) => (
-                  <div key={item.sku} className="p-4 flex items-center gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <h3 className="font-medium text-slate-200 truncate">{item.name}</h3>
-                          <p className="text-xs text-slate-500 font-mono">{item.sku}</p>
-                        </div>
-                        <p className="font-semibold text-slate-200 font-mono">
-                          ${(item.unit_price * item.quantity).toFixed(2)}
-                        </p>
-                      </div>
-                      
-                      <div className="flex items-center justify-between mt-3">
-                        <div className="flex items-center gap-1 bg-slate-950 rounded-lg p-1">
-                          <button
-                            onClick={() => updateQuantity(item.sku, -1)}
-                            className="w-8 h-8 rounded-md bg-slate-800 flex items-center justify-center hover:bg-slate-700 text-slate-400 transition-colors"
-                          >
-                            <Minus className="w-4 h-4" />
-                          </button>
-                          <span className="w-10 text-center font-mono font-medium text-slate-200">
-                            {item.quantity}
-                          </span>
-                          <button
-                            onClick={() => updateQuantity(item.sku, 1)}
-                            className="w-8 h-8 rounded-md bg-slate-800 flex items-center justify-center hover:bg-slate-700 text-slate-400 transition-colors"
-                          >
-                            <Plus className="w-4 h-4" />
-                          </button>
-                        </div>
-                        
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm text-slate-500 font-mono">
-                            ${item.unit_price.toFixed(2)}
-                          </span>
-                          <button
-                            onClick={() => removeItem(item.sku)}
-                            className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center text-red-400 hover:bg-red-500/20 transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <CartItem key={item.sku} item={item} updateQuantity={updateQuantity} removeItem={removeItem} />
                 ))
               )}
             </div>

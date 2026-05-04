@@ -122,3 +122,22 @@ self.addEventListener('notificationclick', (event) => {
     clients.openWindow('/')
   );
 });
+
+// Manejo de mensajes desde la app (para auto-update)
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    console.log('[SW] Recibido SKIP_WAITING, activando nueva versión...');
+    self.skipWaiting();
+  }
+});
+
+// Notificar a todos los clients cuando se activa una nueva versión
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window' }).then((clients) => {
+      clients.forEach((client) => {
+        client.postMessage({ type: 'NEW_VERSION_AVAILABLE' });
+      });
+    })
+  );
+});

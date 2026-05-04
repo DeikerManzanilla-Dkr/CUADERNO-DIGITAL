@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import { 
   ArrowRight, 
   Search, 
@@ -16,7 +17,8 @@ import {
   Wallet,
   Smartphone,
   CreditCard,
-  MessageCircle
+  MessageCircle,
+  Copy
 } from 'lucide-react';
 import { AuthForm } from '@/components/AuthForm';
 import { toast } from 'sonner';
@@ -120,8 +122,27 @@ export default function Home() {
     }
   };
 
+  // Refs para efectos parallax por sección
+  const heroRef = useRef<HTMLDivElement>(null);
+  const cardsRef = useRef<HTMLDivElement>(null);
+  
+  // Parallax para Hero - elementos de fondo se mueven más lento
+  const { scrollYProgress: heroScroll } = useScroll({
+    target: heroRef,
+    offset: ["start start", "end start"]
+  });
+  const heroY = useTransform(heroScroll, [0, 1], [0, 150]);
+  const heroOpacity = useTransform(heroScroll, [0, 0.5], [1, 0]);
+  
+  // Parallax para Cards - efecto sutil de profundidad
+  const { scrollYProgress: cardsScroll } = useScroll({
+    target: cardsRef,
+    offset: ["start end", "end start"]
+  });
+  const cardsY = useTransform(cardsScroll, [0, 1], [50, -50]);
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-slate-950">
+    <div className="min-h-screen bg-slate-950 text-slate-200">
       
       {/* ============================================
           1. NAV BAR MINIMALISTA
@@ -164,9 +185,21 @@ export default function Home() {
       </nav>
 
       {/* ============================================
-          2. HERO & CARACTERÍSTICAS (El "Wow" Visual)
+          2. HERO & CARACTERÍSTICAS (El "Wow" Visual + Parallax)
           ============================================ */}
-      <main className="max-w-6xl mx-auto px-4 pt-16 pb-12">
+      <main ref={heroRef} className="relative max-w-6xl mx-auto px-4 pt-16 pb-12 overflow-hidden">
+        {/* Elementos decorativos de fondo con Parallax - Solo fondo, no afecta texto */}
+        <motion.div 
+          style={{ y: heroY, opacity: heroOpacity }}
+          className="absolute inset-0 pointer-events-none"
+        >
+          {/* Gradiente radial superior */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-cyan-500/10 via-cyan-500/5 to-transparent blur-3xl" />
+          {/* Círculo decorativo izquierdo */}
+          <div className="absolute top-20 -left-40 w-80 h-80 rounded-full bg-gradient-to-br from-teal-500/10 to-cyan-500/5 blur-3xl" />
+          {/* Círculo decorativo derecho */}
+          <div className="absolute top-40 -right-40 w-96 h-96 rounded-full bg-gradient-to-br from-cyan-500/10 to-blue-500/5 blur-3xl" />
+        </motion.div>
         {/* Hero Text */}
         <div className={`text-center mb-12 transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
           {/* Botón de Instalación con 3 Estados y Badge de Versión */}
@@ -209,56 +242,122 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Grid 2x2 Business Pro */}
-        <div className={`grid md:grid-cols-2 gap-6 max-w-4xl mx-auto transition-all duration-700 delay-200 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-          {/* Card 1: Búsqueda Ultra-Rápida */}
+        {/* Grid 2x2 Business Pro con Parallax */}
+        <motion.div 
+          ref={cardsRef}
+          style={{ y: cardsY }}
+          className={`relative grid md:grid-cols-2 gap-6 max-w-4xl mx-auto transition-all duration-700 delay-200 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+        >
+          {/* Elemento decorativo de fondo para Cards - Parallax sutil */}
+          <motion.div 
+            style={{ y: useTransform(cardsScroll, [0, 1], [-30, 30]) }}
+            className="absolute -inset-20 pointer-events-none opacity-30"
+          >
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-gradient-to-r from-cyan-500/5 to-teal-500/5 rounded-full blur-3xl" />
+          </motion.div>
+          {/* Card 1: Atención Rápida */}
           <div className="group p-6 rounded-2xl bg-slate-900/50 border border-slate-800 hover:border-cyan-500/30 transition-all duration-300 hover:bg-slate-900/70">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-cyan-600/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
               <Search className="w-6 h-6 text-cyan-500" />
             </div>
-            <h3 className="text-xl font-semibold text-white mb-2">Búsqueda Ultra-Rápida</h3>
+            <h3 className="text-xl font-semibold text-white mb-2">Atiende en Segundos</h3>
             <p className="text-slate-400 text-sm leading-relaxed">
-              Encuentra productos por nombre o código en segundos. Experiencia tipo "Pokedex" con navegación por teclado.
+              No pierdas ventas por filas largas. Encuentra cualquier producto al instante y cobra rápido.
             </p>
           </div>
 
-          {/* Card 2: Sincronización Total */}
+          {/* Card 2: Control Total */}
           <div className="group p-6 rounded-2xl bg-slate-900/50 border border-slate-800 hover:border-cyan-500/30 transition-all duration-300 hover:bg-slate-900/70">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-cyan-600/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
               <Cloud className="w-6 h-6 text-cyan-500" />
             </div>
-            <h3 className="text-xl font-semibold text-white mb-2">Sincronización Total</h3>
+            <h3 className="text-xl font-semibold text-white mb-2">Control Total de tu Dinero</h3>
             <p className="text-slate-400 text-sm leading-relaxed">
-              Toda tu información segura en la nube. Úsalo como App nativa en tu teléfono (PWA) sin instalar nada.
+              Tu información segura en la nube. Accede desde cualquier dispositivo, como App nativa.
             </p>
           </div>
 
-          {/* Card 3: Reportes Inteligentes */}
+          {/* Card 3: Decisiones Inteligentes */}
           <div className="group p-6 rounded-2xl bg-slate-900/50 border border-slate-800 hover:border-cyan-500/30 transition-all duration-300 hover:bg-slate-900/70">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-cyan-600/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
               <BarChart3 className="w-6 h-6 text-cyan-500" />
             </div>
-            <h3 className="text-xl font-semibold text-white mb-2">Reportes Inteligentes</h3>
+            <h3 className="text-xl font-semibold text-white mb-2">Toma Decisiones con Datos</h3>
             <p className="text-slate-400 text-sm leading-relaxed">
-              Métricas claras: ticket promedio, ganancia neta, cierres diarios. Toma decisiones con datos reales.
+              Reportes claros: ticket promedio, ganancia neta, cierres diarios. Sabes exactamente cómo va tu negocio.
             </p>
           </div>
 
-          {/* Card 4: Sistema de Fiados */}
+          {/* Card 4: Recupera tu Dinero */}
           <div className="group p-6 rounded-2xl bg-slate-900/50 border border-slate-800 hover:border-cyan-500/30 transition-all duration-300 hover:bg-slate-900/70">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-cyan-600/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
               <Users className="w-6 h-6 text-cyan-500" />
             </div>
-            <h3 className="text-xl font-semibold text-white mb-2">Sistema de Fiados</h3>
+            <h3 className="text-xl font-semibold text-white mb-2">Recupera tu Dinero</h3>
             <p className="text-slate-400 text-sm leading-relaxed">
-              Gestiona deudas y pagos parciales. Nunca pierdas el control de lo que te deben tus clientes.
+              Gestiona cuentas por cobrar sin pelear con clientes. Lleva el control de fiados y pagos parciales.
             </p>
           </div>
-        </div>
+        </motion.div>
       </main>
 
       {/* ============================================
-          3. SECCIÓN DE SUSCRIPCIÓN (CTA) - PORTAL DE PAGOS INTERACTIVO
+          3. CARRUSEL DE CAPTURAS (Confianza Visual)
+          ============================================ */}
+      <section className="py-16 overflow-hidden border-t border-slate-800/50">
+        <div className="max-w-6xl mx-auto px-4 mb-10 text-center">
+          <h2 className="text-3xl font-bold text-white mb-4">La interfaz más intuitiva del mercado</h2>
+          <p className="text-slate-400">Mira lo fácil que es gestionar tu negocio desde tu celular o tablet, no necesitas paginas inecesarias. Tu Cuaderno Digital va Directo a la venta</p>
+        </div>
+        
+        {/* Contenedor de Scroll Horizontal */}
+        <div className="flex gap-6 overflow-x-auto pb-8 snap-x snap-mandatory px-4 no-scrollbar">
+          {[
+            { 
+              title: 'Punto de Venta', 
+              desc: 'Barra de busqueda de productos',
+              image: '/carrucel de imagenes/Gemini_Generated_Image_eqleeieqleeieqle.png'
+            },
+            { 
+              title: 'Inventario/Stock', 
+              desc: 'Rápido con escáner',
+              image: '/carrucel de imagenes/Gemini_Generated_Image_wnk7e8wnk7e8wnk7.png'
+            },
+            { 
+              title: 'Tecnología Proven Pos', 
+              desc: 'Gestión de productos',
+              image: '/carrucel de imagenes/Gemini_Generated_Image_gltirqgltirqglti.png'
+            },
+            { 
+              title: 'Reportes', 
+              desc: 'Métricas en tiempo real de todos tus locales',
+              image: '/carrucel de imagenes/Gemini_Generated_Image_ishzzzishzzzishz.png'
+            },
+          ].map((item, i) => (
+            <div key={i} className="flex-none w-[280px] md:w-[350px] snap-center">
+              <div className="bg-slate-800 rounded-3xl p-3 border border-slate-700 shadow-2xl hover:border-cyan-500/50 transition-all duration-300 hover:shadow-cyan-500/10 hover:shadow-2xl hover:-translate-y-1">
+                {/* Imagen de la app */}
+                <div className="w-full h-[500px] rounded-2xl overflow-hidden relative bg-slate-950">
+                  <img 
+                    src={item.image} 
+                    alt={item.title}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                  {/* Overlay con info */}
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent p-6 pt-12">
+                    <p className="text-cyan-400 font-semibold text-lg">{item.title}</p>
+                    <p className="text-slate-400 text-sm">{item.desc}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ============================================
+          4. PORTAL DE SUSCRIPCIÓN (CTA) - PORTAL DE PAGOS INTERACTIVO
           ============================================ */}
       <section className="border-t border-slate-800/50 bg-slate-900/20 py-16">
         <div className="max-w-2xl mx-auto px-4">
@@ -338,10 +437,23 @@ export default function Home() {
             {/* Panel de Datos según método seleccionado */}
             {selectedMethod === 'binance' && (
               <div className="bg-amber-950/20 border border-amber-500/20 rounded-xl p-5 mb-6">
-                <h3 className="text-amber-400 font-semibold mb-3 flex items-center gap-2">
-                  <Wallet className="w-4 h-4" />
-                  Datos para Binance Pay
-                </h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-amber-400 font-semibold flex items-center gap-2">
+                    <Wallet className="w-4 h-4" />
+                    Datos para Binance Pay
+                  </h3>
+                  <button
+                    onClick={() => {
+                      const allData = `ID de Pay: 495 123 655\nMonto: 10.00 USDT`;
+                      navigator.clipboard.writeText(allData);
+                      toast.success('Datos copiados al portapapeles');
+                    }}
+                    className="p-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 transition-colors"
+                    title="Copiar datos"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                </div>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between items-center py-2 border-b border-amber-500/10">
                     <span className="text-slate-400">ID de Pay:</span>
@@ -357,14 +469,27 @@ export default function Home() {
 
             {selectedMethod === 'pagomovil' && (
               <div className="bg-blue-950/20 border border-blue-500/20 rounded-xl p-5 mb-6">
-                <h3 className="text-blue-400 font-semibold mb-3 flex items-center gap-2">
-                  <Smartphone className="w-4 h-4" />
-                  Datos para Pago Móvil
-                </h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-blue-400 font-semibold flex items-center gap-2">
+                    <Smartphone className="w-4 h-4" />
+                    Datos para Pago Móvil
+                  </h3>
+                  <button
+                    onClick={() => {
+                      const allData = `Banco: Bancamiga (0172)\nTeléfono: 0424-7708542\nID: V-31239605\nMonto: Equiv. 10 USD`;
+                      navigator.clipboard.writeText(allData);
+                      toast.success('Datos copiados al portapapeles');
+                    }}
+                    className="p-2 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 transition-colors"
+                    title="Copiar datos"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                </div>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between items-center py-2 border-b border-blue-500/10">
                     <span className="text-slate-400">Banco:</span>
-                    <span className="text-slate-200">Banco de Venezuela</span>
+                    <span className="text-slate-200">Bancamiga (0172)</span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-blue-500/10">
                     <span className="text-slate-400">Teléfono:</span>
@@ -376,7 +501,7 @@ export default function Home() {
                   </div>
                   <div className="flex justify-between items-center py-2">
                     <span className="text-slate-400">Monto:</span>
-                    <span className="text-white font-semibold">Equiv.  USD</span>
+                    <span className="text-white font-semibold">Equiv. 10 USD</span>
                   </div>
                 </div>
               </div>
@@ -421,7 +546,7 @@ export default function Home() {
                   const phone = '584247708542';
                   let message = '';
                   if (selectedMethod === 'binance') {
-                    message = `Hola, elegí pagar por Binance Pay. Mi referencia es: ${reference || '[pendiente]'} ¿Me confirmas la recepción de los 15 USDT?`;
+                    message = `Hola, elegí pagar por Binance Pay. Mi referencia es: ${reference || '[pendiente]'} ¿Me confirmas la recepción de los 10 USDT?`;
                   } else if (selectedMethod === 'pagomovil') {
                     message = `Hola, ya hice el Pago Móvil. Mi referencia es: ${reference || '[pendiente]'} ¿Me confirmas la recepción?`;
                   } else if (selectedMethod === 'stripe') {

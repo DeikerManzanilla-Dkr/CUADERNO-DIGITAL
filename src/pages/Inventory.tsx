@@ -106,6 +106,8 @@ const Inventory = () => {
       setName(data.name);
       setCostPrice(String(data.cost_price));
       setFinalPrice(String(data.final_price || data.sale_price));
+      setCategory(data.category || "viveres");
+      setQuantity("0");
       setEditingExisting(true);
       toast.info(`Producto existente: "${data.name}" — Stock actual: ${data.stock}`);
     } else {
@@ -113,11 +115,32 @@ const Inventory = () => {
     }
   };
 
+  const handleEdit = (product: Product) => {
+    setSku(product.sku);
+    setName(product.name);
+    setCostPrice(String(product.cost_price));
+    setFinalPrice(String(product.final_price));
+    setCategory(product.category || "viveres");
+    setQuantity("0");
+    setEditingExisting(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const skuVal = sku.trim().toUpperCase();
-    if (!skuVal || !name.trim() || !costPrice || !finalPrice || !quantity) {
-      toast.error("Todos los campos son obligatorios");
+    const qtyNum = parseInt(quantity) || 0;
+
+    if (!skuVal || !name.trim() || !costPrice || !finalPrice) {
+      toast.error("SKU, nombre, costo y precio son obligatorios");
+      return;
+    }
+    if (qtyNum < 0) {
+      toast.error("La cantidad no puede ser negativa");
+      return;
+    }
+    if (!editingExisting && qtyNum <= 0) {
+      toast.error("La cantidad inicial debe ser mayor a 0 para nuevos productos");
       return;
     }
 
@@ -150,7 +173,7 @@ const Inventory = () => {
             iva_amount: ivaAmount,
             final_price: finalPriceNum,
             sale_price: finalPriceNum, // mantener compatibilidad
-            stock: existing.stock + parseInt(quantity),
+            stock: existing.stock + qtyNum,
             category,
           })
           .eq("sku", skuVal);
@@ -158,8 +181,13 @@ const Inventory = () => {
         if (error) {
           toast.error("Error al actualizar producto");
         } else {
-          toast.success(`Stock actualizado: +${quantity} unidades`);
+          toast.success(`Producto actualizado. Stock sumado: +${qtyNum}`);
         }
+      } else {
+        setEditingExisting(false);
+        setSaving(false);
+        toast.error("El producto no existe, intente registrarlo de nuevo");
+        return;
       }
     } else {
       const { error } = await supabase.from("products").insert({
@@ -170,7 +198,7 @@ const Inventory = () => {
         iva_amount: ivaAmount,
         final_price: finalPriceNum,
         sale_price: finalPriceNum,
-        stock: parseInt(quantity),
+        stock: qtyNum,
         category,
         user_id: user.id,
       });
@@ -318,12 +346,23 @@ const Inventory = () => {
                   </div>
                 </div>
                 
+                {costPrice && finalPrice && !isNaN(parseFloat(finalPrice) - parseFloat(costPrice)) && (
+                  <div className="p-3 rounded-lg bg-slate-950/50 border border-slate-800 flex items-center justify-between">
+                    <span className="text-xs text-slate-500 uppercase tracking-wider">Ganancia</span>
+                    <span className={`font-mono font-medium ${parseFloat(finalPrice) - parseFloat(costPrice) > 0 ? "text-emerald-400" : "text-red-400"}`}>
+                      ${(parseFloat(finalPrice) - parseFloat(costPrice)).toFixed(2)}
+                    </span>
+                  </div>
+                )}
+
                 <div className="space-y-1.5">
-                  <Label htmlFor="qty" className="text-xs text-slate-500 uppercase tracking-wider">Cantidad</Label>
+                  <Label htmlFor="qty" className="text-xs text-slate-500 uppercase tracking-wider">
+                    {editingExisting ? "Sumar al Stock (0 para omitir)" : "Cantidad Inicial"}
+                  </Label>
                   <Input 
                     id="qty" 
                     type="number" 
-                    min="1" 
+                    min="0" 
                     value={quantity} 
                     onChange={(e) => setQuantity(e.target.value)} 
                     placeholder="Cantidad" 
@@ -336,7 +375,7 @@ const Inventory = () => {
                   className="w-full h-12 text-base font-semibold rounded-lg bg-slate-200 hover:bg-white text-slate-900 shadow-lg transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] border-0" 
                   disabled={saving}
                 >
-                  {saving ? "Guardando..." : editingExisting ? "Actualizar Stock" : "Registrar Producto"}
+                  {saving ? "Guardando..." : editingExisting ? "Actualizar Producto" : "Registrar Producto"}
                 </Button>
                 
                 {editingExisting && (
@@ -503,7 +542,10 @@ const Inventory = () => {
 
                         {/* Acciones rápidas */}
                         <div className={`flex gap-2 transition-all duration-200 ${isHovered ? "opacity-100" : "opacity-0"}`}>
-                          <button className="flex-1 flex items-center justify-center gap-2 p-2.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 hover:text-slate-200 hover:bg-slate-700 transition-colors text-sm">
+                          <button 
+                            onClick={() => handleEdit(p)}
+                            className="flex-1 flex items-center justify-center gap-2 p-2.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 hover:text-slate-200 hover:bg-slate-700 transition-colors text-sm"
+                          >
                             <Edit3 className="w-4 h-4" />
                             Editar
                           </button>

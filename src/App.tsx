@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { usePWAUpdate } from "@/hooks/usePWAUpdate";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -19,6 +20,9 @@ const queryClient = new QueryClient();
 const App = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Hook para detectar y forzar actualizaciones de la PWA
+  usePWAUpdate();
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {

@@ -80,3 +80,12 @@
     border-color: hsl(173 80% 40% / 0.3);
   }
 }
+
+/* Scrollbar invisible para carruseles */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

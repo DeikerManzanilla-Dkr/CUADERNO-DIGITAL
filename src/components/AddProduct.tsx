@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ScanLine, Package, DollarSign, Tag, Archive, Plus, X } from "lucide-react";
@@ -9,11 +9,9 @@ interface AddProductProps {
   onClose?: () => void;
 }
 
-const CATEGORIES = [
-  { id: "viveres", name: "Víveres" },
-  { id: "charcuteria", name: "Charcutería" },
-  { id: "bebidas", name: "Bebidas" },
-  { id: "otros", name: "Otros" },
+const SALE_TYPES = [
+  { id: "unit", name: "Entero", description: "Venta por unidad (números enteros)" },
+  { id: "weight", name: "Fraccionado", description: "Venta por peso/granel (permite decimales)" },
 ];
 
 const AddProduct = ({ onProductAdded, onClose }: AddProductProps) => {
@@ -22,9 +20,11 @@ const AddProduct = ({ onProductAdded, onClose }: AddProductProps) => {
   const [costPrice, setCostPrice] = useState("");
   const [finalPrice, setFinalPrice] = useState("");
   const [stock, setStock] = useState("");
-  const [category, setCategory] = useState("viveres");
+  const [saleType, setSaleType] = useState<"unit" | "weight">("unit");
   const [isScanning, setIsScanning] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [inputMode, setInputMode] = useState<"none" | "text">("none");
+  const barcodeInputRef = useRef<HTMLInputElement>(null);
 
   const IVA_RATE = 0.16;
 
@@ -35,10 +35,24 @@ const AddProduct = ({ onProductAdded, onClose }: AddProductProps) => {
     return { base: Math.round(base * 100) / 100, iva: Math.round(iva * 100) / 100 };
   };
 
+  // Función para activar el teclado manualmente cuando el usuario toca el input
+  const handleManualInput = () => {
+    setInputMode("text");
+    setTimeout(() => {
+      barcodeInputRef.current?.focus();
+    }, 50);
+  };
+
   // Función que recibe el código del escáner
   const handleScanResult = (code: string) => {
     setBarcode(code);
     setIsScanning(false);
+    // Limpiar foco para evitar teclado móvil
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    barcodeInputRef.current?.blur();
+    setInputMode("none");
     toast.success(`Código escaneado: ${code}`);
   };
 
@@ -82,7 +96,7 @@ const AddProduct = ({ onProductAdded, onClose }: AddProductProps) => {
           final_price: finalPriceNum,
           sale_price: finalPriceNum,
           stock: existing.stock + parseInt(stock),
-          category,
+          sale_type: saleType,
           user_id: user.id,
         })
         .eq("id", existing.id);
@@ -108,7 +122,7 @@ const AddProduct = ({ onProductAdded, onClose }: AddProductProps) => {
           final_price: finalPriceNum,
           sale_price: finalPriceNum,
           stock: parseInt(stock),
-          category,
+          sale_type: saleType,
           user_id: user.id,
         });
 
@@ -131,7 +145,7 @@ const AddProduct = ({ onProductAdded, onClose }: AddProductProps) => {
     setCostPrice("");
     setFinalPrice("");
     setStock("");
-    setCategory("viveres");
+    setSaleType("unit");
   };
 
   return (
@@ -167,9 +181,12 @@ const AddProduct = ({ onProductAdded, onClose }: AddProductProps) => {
             <div className="relative flex-1">
               <Tag className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
               <input
+                ref={barcodeInputRef}
                 type="text"
                 value={barcode}
                 onChange={(e) => setBarcode(e.target.value)}
+                onFocus={handleManualInput}
+                inputMode={inputMode}
                 placeholder="Escanee o escriba el código..."
                 className="w-full bg-slate-950 border border-slate-800 pl-12 pr-4 py-3.5 rounded-xl text-slate-200 placeholder:text-slate-600 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/20 transition-all outline-none"
               />
@@ -202,24 +219,27 @@ const AddProduct = ({ onProductAdded, onClose }: AddProductProps) => {
           </div>
         </div>
 
-        {/* Categoría */}
+        {/* Estilo de Cálculo */}
         <div className="space-y-2">
           <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">
-            Categoría
+            Estilo de Cálculo
           </label>
           <div className="grid grid-cols-2 gap-2">
-            {CATEGORIES.map((cat) => (
+            {SALE_TYPES.map((type) => (
               <button
-                key={cat.id}
+                key={type.id}
                 type="button"
-                onClick={() => setCategory(cat.id)}
+                onClick={() => setSaleType(type.id as "unit" | "weight")}
                 className={`py-3 px-4 rounded-xl border text-sm font-medium transition-all ${
-                  category === cat.id
+                  saleType === type.id
                     ? "bg-cyan-500/10 border-cyan-500/30 text-cyan-400"
                     : "bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700"
                 }`}
               >
-                {cat.name}
+                <div className="flex flex-col items-center gap-1">
+                  <span className="font-semibold">{type.name}</span>
+                  <span className="text-xs opacity-70">{type.description}</span>
+                </div>
               </button>
             ))}
           </div>
