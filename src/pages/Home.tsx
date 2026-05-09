@@ -229,7 +229,7 @@ export default function Home() {
             <div className="flex items-center gap-2 px-4 py-1.5 bg-slate-800/50 border border-cyan-500/30 rounded-full">
               <Zap className="w-3 h-3 text-cyan-400" />
               <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-widest">
-                Actualización v2.0 "Rayo"
+                Actualización v22.0 "Rayo"
               </span>
             </div>
           </div>
